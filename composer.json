@@ -1,0 +1,35 @@
+{
+    "name": "pst/core",
+    "description": "PST (Peyton, Stacy, Timber) Core",
+    "type": "library",
+    "license": "MIT",
+    "version": "7.4.33",
+    "autoload": {
+        "psr-4": {
+            "Pst\\Core\\Tests\\": "tests/",
+            "Pst\\Core\\": "src/"
+        },
+        "files": [
+            "src/files/helper_functions.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Jason Thompson"
+        }
+    ],
+    "repositories":  [
+        {
+            "type": "path",
+            "url": "../testing"
+        }
+    ],
+
+    "minimum-stability": "dev",
+    
+    "require": {
+        "php": ">=7.4,<8.0",
+        "psr/container": "^2.0@dev",
+        "pst/testing": "*"
+    }
+}
