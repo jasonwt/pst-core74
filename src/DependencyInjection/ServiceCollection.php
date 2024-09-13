@@ -58,7 +58,7 @@ class ServiceCollection extends CoreObject implements IServiceCollection {
 
     
     public function T(): Type {
-        return Type::fromTypeName(ServiceDescriptor::class);
+        return Type::typeOf(ServiceDescriptor::class);
     }
 
     /**
@@ -139,7 +139,7 @@ class ServiceCollection extends CoreObject implements IServiceCollection {
             }
 
             public function T(): Type {
-                return Type::fromTypeName(ServiceDescriptor::class);
+                return Type::typeOf(ServiceDescriptor::class);
             }
 
             public function toServiceCollection(): IServiceCollection {

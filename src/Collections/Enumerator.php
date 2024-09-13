@@ -6,7 +6,7 @@ declare(strict_types=1);
 namespace Pst\Core\Collections;
 
 use Pst\Core\Types\Type;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use Pst\Core\Collections\Traits\LinqTrait;
@@ -37,7 +37,7 @@ class Enumerator implements IEnumerable {
     protected function __construct($iterator, ?ITypeHint $T = null) {
         if (is_array($iterator)) {
             $iterator = new ArrayIterator($iterator);
-            $T ??= TypeHint::undefined();
+            $T ??= TypeHintFactory::undefined();
         } else if ($iterator instanceof IEnumerable) {
             if ($T !== null && $T !== $iterator->T()) {
                 throw new InvalidArgumentException("Type hint mismatch");
@@ -45,14 +45,14 @@ class Enumerator implements IEnumerable {
                 $T = $iterator->T();
             }
         } else if ($iterator instanceof Traversable) {
-            $T ??= TypeHint::undefined();
+            $T ??= TypeHintFactory::undefined();
         } else {
             throw new InvalidArgumentException("iterator argument must implement IEnumerable, Traversable or be iterable.");
         }
 
         $this->iterator = $iterator;
 
-        $this->T = (string) ($T ?? TypeHint::mixed());
+        $this->T = (string) ($T ?? TypeHintFactory::mixed());
 
         if ($this->T === "void") {
             throw new InvalidArgumentException("Type hint cannot be void");
@@ -68,10 +68,10 @@ class Enumerator implements IEnumerable {
      * @throws LogicException 
      */
     public function getIterator(): Traversable {
-        $T = TypeHint::fromTypeNames($this->T);
+        $T = TypeHintFactory::tryParse($this->T);
 
         foreach ($this->iterator as $key => $value) {
-            if (!$T->isAssignableFrom(Type::fromValue($value))) {
+            if (!$T->isAssignableFrom(Type::typeOf($value))) {
                 throw new InvalidArgumentException("Value of type " . gettype($value) . " is not assignable to source type " . $this->T);
             }
 
@@ -85,7 +85,7 @@ class Enumerator implements IEnumerable {
      * @return ITypeHint 
      */
     public function T(): ITypeHint {
-        return TypeHint::fromTypeNames($this->T);
+        return TypeHintFactory::tryParse($this->T);
     }
 
     /**
@@ -125,7 +125,7 @@ class Enumerator implements IEnumerable {
             for ($i = 0; $i < $count; $i ++) {
                 yield $start + $i * $step;
             }
-        })(), TypeHint::fromTypeNames("int|float"));
+        })(), TypeHintFactory::tryParse("int|float"));
     }
 
     /**
@@ -141,7 +141,7 @@ class Enumerator implements IEnumerable {
             for ($i = 0; $i < $count; $i ++) {
                 yield $value;
             }
-        })(), TypeHint::fromTypeNames("mixed"));
+        })(), TypeHintFactory::tryParse("mixed"));
     }
 
     /**
@@ -172,6 +172,6 @@ class Enumerator implements IEnumerable {
             for ($i = 0; $i < $num; $i ++) {
                 yield $start + $i * $step;
             }
-        })(), TypeHint::fromTypeNames("int|float"));
+        })(), TypeHintFactory::tryParse("int|float"));
     }
 }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use Closure;
@@ -24,7 +24,7 @@ abstract class EqualityComparer extends CoreObject implements IEqualityComparer 
                 };
                 
 
-                $this->equals = Func::new($compareFunc, $T, $T, TypeHint::fromTypeNames("bool"));
+                $this->equals = Func::new($compareFunc, $T, $T, TypeHintFactory::tryParse("bool"));
             }
 
             public function equals($x, $y): bool {

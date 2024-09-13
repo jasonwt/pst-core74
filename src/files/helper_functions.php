@@ -5,8 +5,18 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
+if (!function_exists("enum_exists")) {
+    function enum_exists(string $name): bool {
+        return is_a($name, Enum::class, true);
+    }
+}
+
 function is_enum($value): bool {
-    return is_object($value) && $value instanceof Enum;
+    if (!is_object($value)) {
+        return false;
+    }
+
+    return is_a($value, Enum::class, true) || enum_exists(get_class($value));
 }
 
 function dd($input, bool $terminate = true): string {
@@ -63,7 +73,6 @@ function toSourceCode($value): string {
         return "null";
     }
 }
-
 
 function validate_string($value, int $minLength, int $maxLength) {
     if (!is_string($value)) {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Pst\Core\Runtime;
 
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 use Pst\Core\CoreObject;
 
@@ -31,7 +31,7 @@ final class Settings {
             }
 
             public function T(): ITypeHint {
-                return TypeHint::fromTypeNames("mixed");
+                return TypeHintFactory::tryParse("mixed");
             }
         };
     }

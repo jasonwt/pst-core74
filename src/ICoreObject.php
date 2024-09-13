@@ -20,6 +20,7 @@ interface ICoreObject extends IToString {
     public function getNamespace(): string;
     public function getClassName(): string;
     
+    public function getObjectId(): int;
     public function getType(): Type;
     public function getHashCode(): int;
 

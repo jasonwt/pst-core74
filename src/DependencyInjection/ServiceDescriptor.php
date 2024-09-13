@@ -45,7 +45,7 @@ class ServiceDescriptor extends CoreObject implements ICoreObject {
             throw new ContainerException("Implementation must be a non abstract class.");
         }
 
-        $implementation = Type::fromTypeName($implementation);
+        $implementation = Type::new($implementation);
 
         if ($serviceType->isAssignableFrom($implementation) === false) {
             throw new ContainerException("Implementation must be a subclass of the service type.");
@@ -94,7 +94,7 @@ class ServiceDescriptor extends CoreObject implements ICoreObject {
      * @throws ContainerException
      */
     private static function initObjectImplementation(ServiceLifetime $lifetime, Type $serviceType, object $implementation): object {
-        if (!$serviceType->isAssignableFrom(Type::fromValue($implementation))) {
+        if (!$serviceType->isAssignableFrom(Type::typeOf($implementation))) {
             throw new ContainerException("Implementation must be a subclass of the service type.");
         } else if ($lifetime != ServiceLifetime::Singleton()) {
             throw new ContainerException("Concrete implementations must be have a lifetime of ServiceLifetime::Singleton().");
@@ -115,7 +115,7 @@ class ServiceDescriptor extends CoreObject implements ICoreObject {
      */
     public function __construct(ServiceLifetime $lifetime, $serviceType, $implementation) {
         if (is_string($serviceType)) {
-            $serviceType = Type::fromTypeName($serviceType);
+            $serviceType = Type::new($serviceType);
         } else if (!$serviceType instanceof Type) {
             throw new ContainerException("Service type must be a string or a Type.");
         }

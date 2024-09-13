@@ -12,7 +12,7 @@ use InvalidArgumentException;
 use Exception;
 use Pst\Core\Types\ITypeHint;
 use Pst\Core\Types\Type;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Testing\Should;
 
 trait Trait1 {};
@@ -24,6 +24,18 @@ abstract class AbstractClass implements Interface2 {}
 class TestClass extends AbstractClass implements Interface2 {}
 
 function isAssignableToTest(ITypeHint $toType, ITypeHint $fromType) {
+
+    $TYPES = [
+        "mixed" => true,
+        "undefined" => true,
+        "object" => true,
+        // "class" => true,
+        // "interface" => true,
+        // "trait" => true,
+        // "enum" => true,
+        // "resource" => true
+    ];
+
     $toTypeName = $toType->fullName();
     $fromTypeName = $fromType->fullName();
 
@@ -31,7 +43,7 @@ function isAssignableToTest(ITypeHint $toType, ITypeHint $fromType) {
     $fromTypeParts = explode("|", $fromTypeName);
 
     foreach ($fromTypeParts as $fromTypePart) {
-        $fromTypeIsHint = isset(TypeHint::TYPES[$fromTypePart]);
+        $fromTypeIsHint = isset($TYPES[$fromTypePart]);
 
         foreach ($toTypeParts as $toTypePart) {
             if ($fromTypePart == $toTypePart) {
@@ -46,7 +58,7 @@ function isAssignableToTest(ITypeHint $toType, ITypeHint $fromType) {
                 continue;
             }
 
-            $toTypeIsHint = isset(TypeHint::TYPES[$toTypePart]);
+            $toTypeIsHint = isset($TYPES[$toTypePart]);
             
             if (!$fromTypeIsHint && !$toTypeIsHint) {
                 if (is_a($fromTypePart, $toTypePart, true)) {
@@ -57,7 +69,7 @@ function isAssignableToTest(ITypeHint $toType, ITypeHint $fromType) {
             }
 
             if ($toTypeIsHint) {
-                $fromType = Type::fromTypeName($fromTypePart);
+                $fromType = Type::new($fromTypePart);
 
                 if ($toTypePart === "object" && $fromType->isObject()) {
                     continue 2;
@@ -76,16 +88,37 @@ function isAssignableToTest(ITypeHint $toType, ITypeHint $fromType) {
     return true;
 }
 
+
 Should::executeTests(function() {
     $types = [
-        Type::array(), Type::bool(), Type::float(), Type::int(), Type::null(), Type::string(), Type::void(), 
-        Type::interface(Interface1::class), Type::interface(Interface2::class), 
-        Type::trait(Trait1::class), Type::trait(Trait2::class), 
-        Type::class(AbstractClass::class), Type::class(TestClass::class),
+        Type::array(), 
+        Type::bool(), 
+        Type::float(), 
+        Type::int(), 
+        Type::null(), 
+        Type::string(), 
+        Type::void(), 
 
+        Type::interface(Interface1::class), 
+        Type::interface(Interface2::class), 
 
-        TypeHint::array(), TypeHint::bool(), TypeHint::float(), TypeHint::int(), TypeHint::null(), TypeHint::string(), TypeHint::void(), TypeHint::object(),
-        TypeHint::fromTypeNames("int|null"), TypeHint::fromTypeNames("null|int"), TypeHint::fromTypeNames("?int")
+        Type::trait(Trait1::class), 
+        Type::trait(Trait2::class), 
+
+        Type::class(AbstractClass::class), 
+        Type::class(TestClass::class),
+
+        TypeHintFactory::array(), 
+        TypeHintFactory::bool(), 
+        TypeHintFactory::float(), 
+        TypeHintFactory::int(), 
+        TypeHintFactory::null(), 
+        TypeHintFactory::string(), 
+        TypeHintFactory::void(), 
+        TypeHintFactory::object(),
+        TypeHintFactory::tryParse("int|null"), 
+        TypeHintFactory::tryParse("null|int"), 
+        TypeHintFactory::tryParse("?int")
     ];
 
     foreach ($types as $type) {
@@ -114,9 +147,9 @@ Should::executeTests(function() {
 //     Should::equal((string) ($stringType = Type::string()), "string", $stringType->fullName());
 //     Should::equal((string) ($voidType = Type::void()), "void", $voidType->fullName());
 
-//     Should::equal((string) ($nullIntType = TypeHint::fromTypeNames("?int")), "int|null", $nullIntType->fullName());
-//     Should::equal((string) ($nullIntFloatType = TypeHint::fromTypeNames("?int|float")), "float|int|null", $nullIntFloatType->fullName());
-//     Should::equal((string) ($nullArrayIntFloat = TypeHint::fromTypeNames("?array", "int", "float")), "array|float|int|null", $nullArrayIntFloat->fullName());
+//     Should::equal((string) ($nullIntType = TypeHintFactory::tryParse("?int")), "int|null", $nullIntType->fullName());
+//     Should::equal((string) ($nullIntFloatType = TypeHintFactory::tryParse("?int|float")), "float|int|null", $nullIntFloatType->fullName());
+//     Should::equal((string) ($nullArrayIntFloat = TypeHintFactory::tryParse("?array", "int", "float")), "array|float|int|null", $nullArrayIntFloat->fullName());
 
 //     Should::equal((string) ($trait1Type = Type::typeOf(Trait1::class)), Trait1::class, $trait1Type->fullName());
 //     Should::beTrue($trait1Type->isAbstract(), $trait1Type->isTrait());
@@ -131,10 +164,10 @@ Should::executeTests(function() {
 //     Should::equal((string) ($testClassType = Type::typeOf(TestClass::class)), TestClass::class, $testClassType->fullName());
 //     Should::beTrue(!$testClassType->isAbstract(), $testClassType->isClass(), $testClassType->isObject());
 
-//     Should::throw(InvalidArgumentException::class, fn() => TypeHint::fromTypeNames("?mixed"));
-//     Should::throw(InvalidArgumentException::class, fn() => TypeHint::fromTypeNames("?undefined"));
-//     Should::throw(InvalidArgumentException::class, fn() => TypeHint::fromTypeNames("?void"));
-//     Should::notThrow(Exception::class, fn() => TypeHint::fromTypeNames("?object"));
+//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParse("?mixed"));
+//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParse("?undefined"));
+//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParse("?void"));
+//     Should::notThrow(Exception::class, fn() => TypeHintFactory::tryParse("?object"));
 
 //     $isAssignableTestParameters = [
 //         // "array" => [
@@ -368,12 +401,12 @@ Should::executeTests(function() {
 // //        echo "Testing $type\n";
 //         foreach ($tests["from"] as $otherType => $expected) {
 // //            echo "\tTesting $type from $otherType\n";
-//             Should::equal($expected, TypeHint::fromTypeNames($type)->isAssignableFrom(TypeHint::fromTypeNames($otherType)));
+//             Should::equal($expected, TypeHintFactory::tryParse($type)->isAssignableFrom(TypeHintFactory::tryParse($otherType)));
 //         }
 
 //         foreach ($tests["to"] as $otherType => $expected) {
 // //            echo "\tTesting $type to $otherType\n";
-//             Should::equal($expected, TypeHint::fromTypeNames($type)->isAssignableTo(TypeHint::fromTypeNames($otherType)));
+//             Should::equal($expected, TypeHintFactory::tryParse($type)->isAssignableTo(TypeHintFactory::tryParse($otherType)));
 //         }
 //     }
 

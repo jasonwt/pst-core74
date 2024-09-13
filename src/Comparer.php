@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use Closure;
@@ -23,7 +23,7 @@ abstract class Comparer extends CoreObject implements IComparer {
                     return $x === $y ? 0 : ($x < $y ? -1 : 1);
                 };
 
-                $this->compare = Func::new($compareFunc, $T, $T, TypeHint::fromTypeNames("int"));
+                $this->compare = Func::new($compareFunc, $T, $T, TypeHintFactory::tryParse("int"));
             }
 
             public function compare($x, $y): int {

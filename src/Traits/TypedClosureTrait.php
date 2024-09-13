@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Pst\Core\Traits;
 
 use Pst\Core\Types\Type;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use Pst\Core\Runtime\Settings;
@@ -14,6 +14,7 @@ use Pst\Core\Runtime\Traits\RuntimeSettingsTrait;
 use Closure;
 use ReflectionFunction;
 use InvalidArgumentException;
+use Pst\Core\Types\TypeHintFactoryFactory;
 
 trait TypedClosureTrait {
     use RuntimeSettingsTrait;
@@ -28,8 +29,8 @@ trait TypedClosureTrait {
      * @return void
      */
     protected static function initRuntimeSettings(): void {
-        Settings::tryRegisterSetting(static::class . "::returnValueValidation", true, TypeHint::bool());
-        Settings::tryRegisterSetting(static::class . "::parameterValidation", true, TypeHint::bool());
+        Settings::tryRegisterSetting(static::class . "::returnValueValidation", true, TypeHintFactory::bool());
+        Settings::tryRegisterSetting(static::class . "::parameterValidation", true, TypeHintFactory::bool());
     }
 
     /**
@@ -143,7 +144,7 @@ trait TypedClosureTrait {
                 }
 
                 if ($closureReturnTypeHintName !== "undefined") {
-                    $closureReturnTypeHint = TypeHint::fromTypeNames($closureReturnTypeHintName);
+                    $closureReturnTypeHint = TypeHintFactory::tryParse($closureReturnTypeHintName);
 
                     if ($closureReturnTypeHintName === "void" || $this->TypedClosureTrait__validReturnTypes === "void" || !$validClosureReturnTypes->isAssignableFrom($closureReturnTypeHint)) {
                         throw new InvalidArgumentException("The closure return type hint: '{$closureReturnTypeHintName}' is not assignable to type hint: '{$this->TypedClosureTrait__validReturnTypes}'.");
@@ -172,8 +173,8 @@ trait TypedClosureTrait {
 
                 if ($validClosureParameterTypeHintName !== "undefined" && $validClosureParameterTypeHintName !== $closureParameterTypeHintName) {
                     if ($closureParameterTypeHintName !== "undefined") {
-                        $validClosureParameterTypeHint = TypeHint::fromTypeNames($validClosureParameterTypeHintName);
-                        $closureParameterTypeHint = TypeHint::fromTypeNames($closureParameterTypeHintName);
+                        $validClosureParameterTypeHint = TypeHintFactory::tryParse($validClosureParameterTypeHintName);
+                        $closureParameterTypeHint = TypeHintFactory::tryParse($closureParameterTypeHintName);
 
                         if (!$validClosureParameterTypeHint->isAssignableFrom($closureParameterTypeHint)) {
                             throw new InvalidArgumentException("The valid closure parameter type: '{$closureParameterTypeHintName}' for property: '$closureParameterName' is not assignable to type hint: '{$validClosureParameterTypeHintName}'.");
@@ -202,10 +203,10 @@ trait TypedClosureTrait {
             $validParameterNames = array_keys($this->TypedClosureTrait__validParametersTypes);
 
             foreach ($validParameterNames as $parameterIndex => $validParameterName) {
-                $validParameterTypes = TypeHint::fromTypeNames($this->TypedClosureTrait__validParametersTypes[$validParameterName]);
+                $validParameterTypes = TypeHintFactory::tryParse($this->TypedClosureTrait__validParametersTypes[$validParameterName]);
                 $parameter = $args[$parameterIndex];
 
-                $valueType = Type::fromValue($parameter);
+                $valueType = Type::typeOf($parameter);
 
                 if (!$validParameterTypes->isAssignableFrom($valueType)) {
                     throw new InvalidArgumentException("The invoke parameter type: '" . $valueType->fullName() . "' for parameter: '$validParameterName' is not assignable to the type hint: '{$this->TypedClosureTrait__validParametersTypes[$validParameterName]}'.");
@@ -220,9 +221,9 @@ trait TypedClosureTrait {
                 return $result;
             }
 
-            $returnType = Type::fromValue($result);
+            $returnType = Type::typeOf($result);
 
-            $closureReturnType = TypeHint::fromTypeNames($this->TypedClosureTrait__validReturnTypes);
+            $closureReturnType = TypeHintFactory::tryParse($this->TypedClosureTrait__validReturnTypes);
 
             if (!$closureReturnType->isAssignableFrom($returnType)) {
                 throw new InvalidArgumentException("The invoke return type: '{$returnType}' is not assignable to the valid return type hint: '{$this->TypedClosureTrait__validReturnTypes}'.");
@@ -256,7 +257,7 @@ trait TypedClosureTrait {
      * @return ITypeHint The return type hint of the closure.
      */
     protected function getReturnTypeHint(): ITypeHint {
-        return TypeHint::fromTypeNames($this->TypedClosureTrait__validReturnTypes);
+        return TypeHintFactory::tryParse($this->TypedClosureTrait__validReturnTypes);
     }
 
     /**
@@ -265,7 +266,7 @@ trait TypedClosureTrait {
      * @return array An array containing the return type hint and parameter type hints.
      */
     protected function getParameterTypeHints(): array {
-        return array_map(fn($v) => TypeHint::fromTypeNames($v), $this->TypedClosureTrait__validParametersTypes);
+        return array_map(fn($v) => TypeHintFactory::tryParse($v), $this->TypedClosureTrait__validParametersTypes);
     }
 
     /**
@@ -283,7 +284,7 @@ trait TypedClosureTrait {
                 throw new InvalidArgumentException("Parameter '" . $keyOrIndex . "' does not exist.");
             }
 
-            return TypeHint::fromTypeNames($this->TypedClosureTrait__validParametersTypes[$keyOrIndex]);
+            return TypeHintFactory::tryParse($this->TypedClosureTrait__validParametersTypes[$keyOrIndex]);
         } else if (!is_int($keyOrIndex)) {
             throw new InvalidArgumentException("Parameter key must be an integer or string.");
         }
@@ -294,7 +295,7 @@ trait TypedClosureTrait {
             throw new InvalidArgumentException("Parameter at index " . $keyOrIndex . " does not exist.");
         }
 
-        return TypeHint::fromTypeNames($this->TypedClosureTrait__validParametersTypes[$parameterKeys[$keyOrIndex]]);
+        return TypeHintFactory::tryParse($this->TypedClosureTrait__validParametersTypes[$parameterKeys[$keyOrIndex]]);
     }
 
     /**

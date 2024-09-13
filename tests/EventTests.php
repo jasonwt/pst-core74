@@ -7,7 +7,7 @@ declare(strict_types=1);
 namespace EventTests;
 
 use Pst\Core\Types\Type;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 
 use Pst\Core\Events\Event;
 use Pst\Core\Events\IEventSubscriptions;
@@ -26,7 +26,7 @@ Should::executeTests(function() {
 
         public function __construct() {
             $this->event1 = new Event($this);
-            $this->event2 = new Event($this, TypeHint::undefined(), Type::float());
+            $this->event2 = new Event($this, TypeHintFactory::undefined(), Type::float());
         }
 
         public function event1(): IEventSubscriptions {

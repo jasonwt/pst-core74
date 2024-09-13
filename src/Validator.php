@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 
 use Closure;
 use InvalidArgumentException;
@@ -23,7 +23,7 @@ class Validator extends CoreObject {
             throw new InvalidArgumentException("Validator with name $name already exists");
         }
 
-        $this->validators[$name] = Func::new($validator, TypeHint::mixed(), TypeHint::fromTypeNames("bool|string"));
+        $this->validators[$name] = Func::new($validator, TypeHintFactory::mixed(), TypeHintFactory::tryParse("bool|string"));
     }
 
     public function hasValidator(string $name): bool {

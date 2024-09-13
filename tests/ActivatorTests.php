@@ -18,19 +18,19 @@ Should::executeTests(function() {
     Should::equal(gettype($nullValue = Activator::createInstance($nullType = Type::null())), "NULL");
     Should::equal($nullType->defaultValue(), $nullValue, null);
 
-    Should::equal(gettype($intValue = Activator::createInstance($intType = Type::fromValue(1))), "integer");
+    Should::equal(gettype($intValue = Activator::createInstance($intType = Type::typeOf(1))), "integer");
     Should::equal($intType->defaultValue(), $intValue, 0);
 
-    Should::equal(gettype($floatValue = Activator::createInstance($floatType = Type::fromValue(1.0))), "double");
+    Should::equal(gettype($floatValue = Activator::createInstance($floatType = Type::typeOf(1.0))), "double");
     Should::equal($floatType->defaultValue(), $floatValue, 0.0);
 
-    Should::equal(gettype($boolValue = Activator::createInstance($boolType = Type::fromValue(true))), "boolean");
+    Should::equal(gettype($boolValue = Activator::createInstance($boolType = Type::typeOf(true))), "boolean");
     Should::equal($boolType->defaultValue(), $boolValue, false);
 
-    Should::equal(gettype($stringValue = Activator::createInstance($stringType = Type::fromValue("string"))), "string");
+    Should::equal(gettype($stringValue = Activator::createInstance($stringType = Type::typeOf("string"))), "string");
     Should::equal($stringType->defaultValue(), $stringValue, "");
 
-    Should::equal(gettype($arrayValue = Activator::createInstance($arrayType = Type::fromValue([]))), "array");
+    Should::equal(gettype($arrayValue = Activator::createInstance($arrayType = Type::typeOf([]))), "array");
     Should::equal($arrayType->defaultValue(), $arrayValue, []);
     
 });

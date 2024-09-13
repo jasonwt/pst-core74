@@ -1,14 +1,16 @@
 <?php
-/*__FILEDOCBLOCK__*/
 
 declare(strict_types=1);
 
 namespace Pst\Core\Types;
 
-interface ITypeHint {
-    public function isAssignableFrom(ITypeHint $typeHint): bool;
-    public function isAssignableTo(ITypeHint $typeHint): bool;
+use Pst\Core\ICoreObject;
+
+interface ITypeHint extends ICoreObject {
     public function fullName(): string;
-    public function __toString(): string;
     
+    public function isAssignableTo(ITypeHint $type): bool;
+    public function isAssignableFrom(ITypeHint $type): bool;
+
+    public function __toString(): string;
 }

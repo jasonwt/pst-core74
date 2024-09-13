@@ -7,7 +7,7 @@ namespace Pst\Core\Events;
 
 use Pst\Core\Action;
 
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use Closure;
@@ -37,7 +37,7 @@ class Event implements IEvent {
      */
     public function __construct(object $sender, ITypeHint ...$eventArgumentTypes) {
         $this->sender = $sender;
-        $this->eventArgumentTypes = array_merge([TypeHint::object()], $eventArgumentTypes);
+        $this->eventArgumentTypes = array_merge([TypeHintFactory::object()], $eventArgumentTypes);
     }
 
     /**

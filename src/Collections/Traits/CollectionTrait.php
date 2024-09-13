@@ -6,7 +6,7 @@ declare(strict_types=1);
 namespace Pst\Core\Collections\Traits;
 
 use Pst\Core\Types\Type;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use Pst\Core\Collections\Enumerator;
@@ -40,7 +40,7 @@ trait CollectionTrait {
     public function __construct($iterable, ?ITypeHint $T = null) {
         if (is_array($iterable)) {
             $iterable = new ArrayIterator($iterable);
-            $T ??= TypeHint::undefined();
+            $T ??= TypeHintFactory::undefined();
         } else if ($iterable instanceof IEnumerable) {
             if ($T !== null && $T !== $iterable->T()) {
                 throw new InvalidArgumentException("Type hint mismatch");
@@ -48,12 +48,12 @@ trait CollectionTrait {
 
             $T = $iterable->T();
         } else if ($iterable instanceof Traversable) {
-            $T ??= TypeHint::undefined();
+            $T ??= TypeHintFactory::undefined();
         } else {
             throw new InvalidArgumentException("iterable argument must implement ICollection, Traversable or be iterable.");
         }
 
-        $this->CollectionTrait_itemsTypeHint = (string) ($T ?? TypeHint::mixed());
+        $this->CollectionTrait_itemsTypeHint = (string) ($T ?? TypeHintFactory::mixed());
         $this->CollectionTrait_items = [];
 
         foreach ($iterable as $key => $value) {
@@ -62,7 +62,7 @@ trait CollectionTrait {
     }
 
     public function T(): ITypeHint {
-        return TypeHint::fromTypeNames($this->CollectionTrait_itemsTypeHint);
+        return TypeHintFactory::tryParse($this->CollectionTrait_itemsTypeHint);
     }
 
     public function getIterator(): Traversable {
@@ -102,7 +102,7 @@ trait CollectionTrait {
     }
 
     public function add($item, $key = null): void {
-        $itemsTypeHint = TypeHint::fromTypeNames($this->CollectionTrait_itemsTypeHint);
+        $itemsTypeHint = TypeHintFactory::tryParse($this->CollectionTrait_itemsTypeHint);
 
         if (!$itemsTypeHint->isAssignableFrom(Type::fromValue($item))) {
             throw new Exception("Item is not assignable to the type hint.");
@@ -160,7 +160,7 @@ trait CollectionTrait {
     }
 
     public function values(): IEnumerable {
-        return new ReadOnlyCollection(array_values($this->CollectionTrait_items), TypeHint::fromTypeNames($this->CollectionTrait_itemsTypeHint));
+        return new ReadOnlyCollection(array_values($this->CollectionTrait_items), TypeHintFactory::tryParse($this->CollectionTrait_itemsTypeHint));
     }
 
     public function remove($key): bool {

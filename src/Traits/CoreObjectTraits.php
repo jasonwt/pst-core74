@@ -42,6 +42,10 @@ trait CoreObjectTraits {
         return $this->coreObjectTraitCache[__FUNCTION__] = end($classNameParts);
     }
 
+    public function getObjectId(): int {
+        return spl_object_id($this);
+    }
+
     /**
      * Gets the type of the object.
      * 

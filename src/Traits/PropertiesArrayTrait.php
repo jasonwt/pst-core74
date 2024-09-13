@@ -6,7 +6,7 @@ namespace Pst\Core\Traits;
 
 use Pst\Core\Func;
 use Pst\Core\Types\Type;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
 
 use function Pst\Core\toArray;
@@ -52,9 +52,9 @@ trait PropertiesArrayTrait {
             throw new InvalidArgumentException("Property with name '{$name}' already exists");
         }
         
-        $typeHint ??= TypeHint::mixed();
+        $typeHint ??= TypeHintFactory::mixed();
 
-        if ($defaultValue !== null && !$typeHint->isAssignableFrom(Type::fromValue($defaultValue))) {
+        if ($defaultValue !== null && !$typeHint->isAssignableFrom(Type::typeOf($defaultValue))) {
             throw new InvalidArgumentException("Default value is not assignable to type hint");
         }
 
@@ -159,7 +159,7 @@ trait PropertiesArrayTrait {
 
         $property = $this->PropertiesArrayTrait[$name];
 
-        if (!TypeHint::fromTypeNames($property->typeHint)->isAssignableFrom(Type::fromValue($value))) {
+        if (!TypeHintFactory::tryParse($property->typeHint)->isAssignableFrom(Type::typeOf($value))) {
             throw new InvalidArgumentException("Value is not assignable to type hint");
         }
 

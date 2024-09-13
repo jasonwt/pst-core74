@@ -6,7 +6,7 @@ namespace Pst\Core\Traits;
 
 use Pst\Core\Func;
 use Pst\Core\Action;
-use Pst\Core\Types\TypeHint;
+use Pst\Core\Types\TypeHintFactory;
 
 use Closure;
 use InvalidArgumentException;

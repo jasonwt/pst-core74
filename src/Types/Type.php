@@ -6,30 +6,20 @@ declare(strict_types=1);
 namespace Pst\Core\Types;
 
 use Pst\Core\Enum;
+use Pst\Core\ITryParse;
+use Pst\Core\CoreObject;
+use Pst\Core\ICoreObject;
+
 use Pst\Core\Exceptions\InvalidOperationException;
-
-// if the php version is < 8.1 use the function Pst\Core\enum_exists
-// if the php version is >= 8.1 use the function enum_exists
-
-if (PHP_VERSION_ID < 80100) {
-    if (!function_exists("enum_exists")) {
-        function enum_exists(string $name): bool {
-            return class_exists($name) && is_a($name, Enum::class, true);
-        }
-    }
-}
-
-if (!function_exists("is_enum")) {
-    function is_enum($value): bool {
-        return !is_object($value) ? false : enum_exists(get_class($value));
-    }
-}
-
-//use function Pst\Core\enum_exists;
-//use function Pst\Core\is_enum;
 
 use ReflectionClass;
 use InvalidArgumentException;
+
+if (!function_exists("enum_exists")) {
+    function enum_exists(string $name): bool {
+        return is_a($name, Enum::class, true);
+    }
+}
 
 /**
  * Represents a php basic type
@@ -39,7 +29,10 @@ use InvalidArgumentException;
  * @since 1.0.0
  * 
  */
-final class Type implements ITypeHint {
+final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse {
+    private static array $typeNameCache = [];
+    private static array $getTypeInfoCache = [];
+
     const TYPES = [
         "array"  => ["isArray"  => true,  "isValueType"   => true,  "defaultValue" => []],
         "bool"   => ["isBool"   => true,  "isValueType"   => true,  "defaultValue" => false],
@@ -50,20 +43,44 @@ final class Type implements ITypeHint {
         "void"   => ["isVoid"   => true],
     ];
 
-    private static array $cache = [
-        "typesInfo" => [],
-        "types" => [],
-    ];
+    private string $namespace = "";
+    private string $name = "";
+    private string $fullName = "";
+    private $defaultValue = null;
 
-    private array $properties = [];
+    private bool $isAbstract = false;
+    private bool $isArray = false;
+    private bool $isBool = false;
+    private bool $isClass = false;
+    private bool $isEnum = false;
+    private bool $isFloat = false;
+    private bool $isInt = false;
+    private bool $isInterface = false;
+    private bool $isNull = false;
+    private bool $isObject = false;
+    private bool $isReferenceType = false;
+    private bool $isResource = false;
+    private bool $isString = false;
+    private bool $isTrait = false;
+    private bool $isValueType = false;
+    private bool $isVoid = false;
 
+    /**
+     * Gets the type info for the provided type name
+     * 
+     * @param string $name 
+     * 
+     * @return array|null 
+     * 
+     * @throws InvalidArgumentException 
+     */
     public static function getTypeInfo(string $name): ?array {
         if (empty($name = trim($name))) {
             throw new InvalidArgumentException("Type name cannot be empty.");
         }
 
-        if (isset(self::$cache["typesInfo"][$name])) {
-            return self::$cache["typesInfo"][$name];
+        if (isset(self::$getTypeInfoCache[$name])) {
+            return self::$getTypeInfoCache[$name];
         }
 
         $typeInfo = [
@@ -85,7 +102,7 @@ final class Type implements ITypeHint {
                 $typeInfo["isTrait"] = true;
                 $typeInfo["isAbstract"] = true;
 
-            } else if (enum_exists($name)) {
+            } else if (enum_exists($name) ||  is_a($name, Enum::class, true)) {
                 $typeInfo["isEnum"] = true;
                 $typeInfo["isReferenceType"] = true;
 
@@ -122,9 +139,7 @@ final class Type implements ITypeHint {
             
         }
 
-        //print_r($typeInfo);
-
-        return (self::$cache["typesInfo"][$name] = $typeInfo);
+        return (self::$getTypeInfoCache[$name] = $typeInfo);
     }
 
     /**
@@ -141,302 +156,313 @@ final class Type implements ITypeHint {
             throw new InvalidArgumentException("Type name cannot be empty.");
         }
 
-        if (isset(self::$cache["types"][$name])) {
-            return self::$cache["types"][$name];
+        if (($properties = (self::$getTypeInfoCache[$name] ?? static::getTypeInfo($name))) === null) {
+            throw new InvalidArgumentException("Type '{$name}' does not exist.");
         }
         
-        if (($this->properties = static::getTypeInfo($name)) === null) {
-            throw new InvalidArgumentException("Type '{$name}' does not exist.");
+        foreach ($properties as $propertyName => $propertyValue) {
+            $this->{$propertyName} = $propertyValue;
         }
     }
 
     public function name(): string {
-        return $this->properties["name"];
+        return $this->name;
     }
 
     public function namespace(): string {
-        return $this->properties["namespace"];
+        return $this->namespace;
     }
 
     public function fullName(): string {
-        return $this->properties["fullName"];
+        return $this->fullName;
     }
 
     public function __toString(): string {
-        return $this->properties["fullName"];
+        return $this->fullName;
     }
 
     public function isAbstract(): bool {
-        return $this->properties["isAbstract"];
+        return $this->isAbstract;
     }
 
     public function isArray(): bool {
-        return $this->properties["isArray"];
+        return $this->isArray;
     }
 
     public function isBool(): bool {
-        return $this->properties["isBool"];
+        return $this->isBool;
     }
 
     public function isClass(): bool {
-        return $this->properties["isClass"];
+        return $this->isClass;
     }
 
     public function isEnum(): bool {
-        return $this->properties["isEnum"];
+        return $this->isEnum;
     }
 
     public function isFloat(): bool {
-        return $this->properties["isFloat"];
+        return $this->isFloat;
     }
 
     public function isInt(): bool {
-        return $this->properties["isInt"];
+        return $this->isInt;
     }
 
     public function isInterface(): bool {
-        return $this->properties["isInterface"];
+        return $this->isInterface;
     }
 
     public function isNumericType(): bool {
-        return $this->properties["isInt"] || $this->properties["isFloat"];
+        return $this->isInt || $this->isFloat;
     }
 
     public function isNull(): bool {
-        return $this->properties["isNull"];
+        return $this->isNull;
     }
 
     public function isObject(): bool {
-        return ($this->properties["isObject"] ??= false);
+        return $this->isObject;
     }
 
     public function isReferenceType(): bool {
-        return $this->properties["isReferenceType"];
+        return $this->isReferenceType;
     }
 
     public function isString(): bool {
-        return $this->properties["isString"];;
+        return $this->isString;
     }
 
     public function isTrait(): bool {
-        return $this->properties["isTrait"];
+        return $this->isTrait;
     }
 
     public function isValueType(): bool {
-        return $this->properties["isValueType"];
+        return $this->isValueType;
     }
 
     public function isVoid(): bool {
-        return $this->properties["isVoid"];
+        return $this->isVoid;
+    }
+
+    public function isResource(): bool {
+        return $this->isResource;
     }
 
     public function defaultValue() {
-        if (!array_key_exists($this->properties["name"], self::TYPES)) {
+        if ($this->fullName === "void") {
+            throw new InvalidOperationException("Type '{$this->name()}' has no default value.");
+        } else if ($this->fullName === "null") {
             return null;
         }
 
-        if (!array_key_exists("defaultValue", $this->properties)) {
-            throw new InvalidOperationException("Type '{$this->name()}' has no default value.");
+        if (!array_key_exists($this->name, self::TYPES)) {
+            return null;
         }
 
-        return $this->properties["defaultValue"];
+        return $this->defaultValue;
     }
 
     public function isAssignableFrom(ITypeHint $other): bool {        
         // echo get_class($this) . "::" . $this->fullName() . "->isAssignableFrom(" . get_class($other) . "::" . $other->fullName() . ")\n";
 
-        $toTypeName = $this->fullName();
-        $fromTypeName = $other->fullName();
-
-        if ($toTypeName === $fromTypeName) {
+        if (($toTypeName = $this->fullName()) === ($fromTypeName = $other->fullName())) {
             return true;
-        } else if ($toTypeName === "void" || $fromTypeName === "void") {
+        }
+
+        if (!$other instanceof Type) {
             return false;
         }
 
-        return is_a($fromTypeName, $toTypeName, true);
+        return is_a($fromTypeName, $toTypeName, true);   
     }
 
     public function isAssignableTo(ITypeHint $other): bool {
-        // echo get_class($this) . "::" . $this->fullName() . "->isAssignableTo(" . get_class($other) . "::" . $other->fullName() . ")\n";
         return $other->isAssignableFrom($this);
     }
 
-    /**
-     * Static factory method to create a new Type instance of the specified type name.
-     * 
-     * @param $name 
-     * @param bool $byValue
-     * 
-     * @return Type 
-     */
-    public static function typeOf($typeName, bool $byValue = false): Type {
-        if ($byValue) {
-            $typeType = gettype($typeName);
-
-            if ($typeType === "object") {
-                $typeName = get_class($typeName);
-            } else if ($typeType === "array") {
-                $typeName = "array";
-            } else if ($typeType === "boolean") {
-                $typeName = "bool";
-            } else if ($typeType === "double") {
-                $typeName = "float";
-            } else if ($typeType === "integer") {
-                $typeName = "int";
-            } else if ($typeType === "NULL") {
-                $typeName = "null";
-            } else if ($typeType === "string") {
-                $typeName = "string";
-            } else {
-                throw new InvalidArgumentException("Unsupported value type: '$typeType'");
-            }
-        }
-
-        if (!is_string($typeName)) {
-            throw new InvalidArgumentException("Type name must be a string.");
-        } else if (empty($typeName = trim($typeName))) {
-            throw new InvalidArgumentException("Type name cannot be empty.");
-        }
-
-        return (self::$cache["types"][$typeName] ??= new Type($typeName));
-    }
-
 
     /**
-     * Static factory method to create a new Type instance of the specified type name.
+     * Gets the type of the provided value
      * 
-     * @param string $name 
-     * 
-     * @return Type 
-     */
-    public static function fromTypeName(string $name): Type {
-        if (empty($name = trim($name))) {
-            throw new InvalidArgumentException("Type name cannot be empty.");
-        }
-
-        return (self::$cache["types"][$name] ??= new Type($name));
-    }
-
-    /**
-     * Static factory method to create a new Type instance from the specified value.
-     * 
-     * @param $value 
+     * @param mixed $typeName 
      * 
      * @return Type 
      * 
      * @throws InvalidArgumentException 
      */
-    public static function fromValue($value): Type {
-        if (is_array($value)) {
-            return self::array();
-        } else if (is_bool($value)) {
-            return self::bool();
-        } else if (is_float($value)) {
-            return self::float();
-        } else if (is_int($value)) {
-            return self::int();
-        } else if (is_null($value)) {
-            return self::null();
-        } else if (is_string($value)) {
-            return self::string();
-        } else if (is_enum($value)) {
-            return self::fromTypeName(get_class($value));
-        } else if (is_object($value)) {
-            
-            return self::fromTypeName(get_class($value));
+    public static function typeOf($typeName): Type {
+        $inputType = gettype($typeName);
+
+        if ($inputType === "object") {
+            $inputType = get_class($typeName);
+        } else if ($inputType === "string") {
+            $inputType = "string";
+        } else if ($inputType === "NULL") {
+            $inputType = "null";
+        } else if ($inputType === "boolean") {
+            $inputType = "bool";
+        } else if ($inputType === "integer") {
+            $inputType = "int";
+        } else if ($inputType === "double") {
+            $inputType = "float";
+        } else if ($inputType === "array") {
+            $inputType = "array";
+        } else if ($inputType === "resource") {
+            $inputType = "resource";
         } else {
-            throw new InvalidArgumentException("Unsupported value type: " . gettype($value) . ", " . print_r($value, true));
-        }
+            throw new InvalidArgumentException("Unsupported value type: '$inputType'");
+        } 
+
+        return (self::$typeNameCache[$inputType] ??= new Type($inputType));
     }
 
+    /**
+     * Creates a new instance of Type
+     * 
+     * @param mixed $input 
+     * @param bool $byValue 
+     * 
+     * @return Type 
+     * 
+     * @throws InvalidArgumentException 
+     */
+    public static function new($input, bool $byValue = false): Type {
+        $inputType = gettype($input);
+
+        if ($byValue) {
+            return self::typeOf($input, true);
+        } else if ($inputType !== "string") {
+            throw new InvalidArgumentException("Type hint must be a string or any type with the byValue flag set to true");
+        } else if (empty($input = trim($input))) {
+            throw new InvalidArgumentException("Type hint cannot be empty");
+        }
+
+        return (self::$typeNameCache[$input] ??= new Type($input));
+    }
+
+    /**
+     * Tries to parse a string into a Type instance
+     * 
+     * @param string $input 
+     * 
+     * @return Type|null 
+     */
+    public static function tryParse(string $input): ?Type {
+        if (empty($input = trim($input))) {
+            return null;
+        }
+
+        if (!isset(self::$typeNameCache[$input])) {
+            if ((self::$getTypeInfoCache[$input] ??= self::getTypeInfo($input)) === null) {
+                return null;
+            }
+        }
+
+        return (self::$typeNameCache[$input] = new Type($input));
+    }
+    
     public static function array(): Type {
-        return (self::$cache["types"]["array"] ??= new Type("array"));
+        return (self::$typeNameCache["array"] ??= new Type("array"));
     }
 
     public static function bool(): Type {
-        return (self::$cache["types"]["bool"] ??= new Type("bool"));
+        return (self::$typeNameCache["bool"] ??= new Type("bool"));
     }
 
     public static function float(): Type {
-        return (self::$cache["types"]["float"] ??= new Type("float"));
+        return (self::$typeNameCache["float"] ??= new Type("float"));
     }
 
     public static function int(): Type {
-        return (self::$cache["types"]["int"] ??= new Type("int"));
+        return (self::$typeNameCache["int"] ??= new Type("int"));
     }
 
     public static function null(): Type {
-        return (self::$cache["types"]["null"] ??= new Type("null"));
+        return (self::$typeNameCache["null"] ??= new Type("null"));
     }
 
     public static function string(): Type {
-        return (self::$cache["types"]["string"] ??= new Type("string"));
+        return (self::$typeNameCache["string"] ??= new Type("string"));
     }
 
     public static function void(): Type {
-        return (self::$cache["types"]["void"] ??= new Type("void"));
+        return (self::$typeNameCache["void"] ??= new Type("void"));
     }
 
+    /**
+     * Creates a new Type instance for the provided class name
+     * 
+     * @param string $name 
+     * 
+     * @return Type 
+     * 
+     * @throws InvalidArgumentException 
+     */
     public static function interface(string $name): Type {
         if (empty($name = trim($name))) {
             throw new InvalidArgumentException("Type name cannot be empty.");
-        }
-
-        if (!interface_exists($name)) {
+        } else if (!interface_exists($name)) {
             throw new InvalidArgumentException("Interface '{$name}' does not exist.");
         }
 
-        return (self::$cache["types"][$name] ??= new Type($name));
+        return (self::$typeNameCache[$name] ??= new Type($name));
     }
 
+    /**
+     * Creates a new Type instance for the provided class name
+     * 
+     * @param string $name 
+     * 
+     * @return Type 
+     * 
+     * @throws InvalidArgumentException 
+     */
     public static function class(string $name): Type {
         if (empty($name = trim($name))) {
             throw new InvalidArgumentException("Type name cannot be empty.");
-        }
-
-        if (!class_exists($name)) {
+        } else if (!class_exists($name)) {
             throw new InvalidArgumentException("Class '{$name}' does not exist.");
         }
 
-        return (self::$cache["types"][$name] ??= new Type($name));
+        return (self::$typeNameCache[$name] ??= new Type($name));
     }
 
+    /**
+     * Creates a new Type instance for the provided trait name
+     * 
+     * @param string $name 
+     * 
+     * @return Type 
+     * 
+     * @throws InvalidArgumentException 
+     */
     public static function trait(string $name): Type {
         if (empty($name = trim($name))) {
             throw new InvalidArgumentException("Type name cannot be empty.");
-        }
-
-        if (!trait_exists($name)) {
+        } else if (!trait_exists($name)) {
             throw new InvalidArgumentException("Trait '{$name}' does not exist.");
         }
 
-        return (self::$cache["types"][$name] ??= new Type($name));
+        return (self::$typeNameCache[$name] ??= new Type($name));
     }
 
+    /**
+     * Creates a new Type instance for the provided enum name
+     * 
+     * @param string $name 
+     * 
+     * @return Type 
+     * 
+     * @throws InvalidArgumentException 
+     */
     public static function enum(string $name): Type {
         if (empty($name = trim($name))) {
             throw new InvalidArgumentException("Type name cannot be empty.");
-        }
-
-        if (!enum_exists($name)) {
+        } else if (!enum_exists($name)) {
             throw new InvalidArgumentException("Enum '{$name}' does not exist.");
         }
 
-        return (self::$cache["types"][$name] ??= new Type($name));
+        return (self::$typeNameCache[$name] ??= new Type($name));
     }
-
-
-
-    
-    
-
-    // /**
-    //  * Static factory method to create a new Type instance of enum.
-    //  * 
-    //  * @return Type 
-    //  */
-    // public static function enum(): Type {
-    //     return (self::$typeCache["enum"] ??= new Type("enum"));
-    // }
 }
