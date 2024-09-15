@@ -43,7 +43,7 @@ trait LinqTrait {
      * @throws InvalidArgumentException 
      */
     public function all(Closure $predicate): bool {
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         foreach ($this as $key => $value) {
             if (!$predicateFunc($value, $key)) {
@@ -64,7 +64,7 @@ trait LinqTrait {
      * @throws InvalidArgumentException 
      */
     public function any(Closure $predicate): bool {
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         foreach ($this as $key => $value) {
             if ($predicateFunc($value, $key)) {
@@ -89,7 +89,7 @@ trait LinqTrait {
             return iterator_count($this);
         }
 
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
         $count = 0;
 
         foreach ($this as $key => $value) {
@@ -120,7 +120,7 @@ trait LinqTrait {
             throw new InvalidOperationException("Sequence contains no elements");
         }
 
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         foreach ($this as $key => $value) {
             if ($predicateFunc($value, $key)) {
@@ -148,7 +148,7 @@ trait LinqTrait {
             })(), TypeHintFactory::keyTypes());
         }
 
-        $predicate = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicate = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         return Enumerator::new((function() use ($predicate): Generator {
             foreach ($this as $key => $value) {
@@ -209,7 +209,7 @@ trait LinqTrait {
             return $last;
         }
 
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
         $last = null;
 
         foreach ($this as $key => $value) {
@@ -284,13 +284,32 @@ trait LinqTrait {
             throw new InvalidArgumentException("TResult cannot be void");
         }
 
-        $selectorFunc = Func::new($selector, $this->T(), TypeHintFactory::tryParse("null|int|string"), $TResult);
+        $selectorFunc = Func::new($selector, $this->T(), TypeHintFactory::tryParse("int|string|void"), $TResult);
         
         return Enumerator::new((function() use ($selectorFunc): Generator {
             foreach ($this as $key => $value) {
                 yield $selectorFunc($value, $key);
             }
         })(), $TResult);
+    }
+
+    public function selectMany(Closure $selector, ?ITypeHint $TResult = null): IEnumerable {
+        throw new NotImplementedException("Not implemented");
+        // if ((string) ($TResult ??= TypeHintFactory::undefined()) === "void") {
+        //     throw new InvalidArgumentException("TResult cannot be void");
+        // }
+
+        // $selectorFunc = Func::new($selector, $this->T(), TypeHintFactory::tryParse("int|string|void"), $TResult);
+
+        // return Enumerator::new((function() use ($selectorFunc): Generator {
+        //     foreach ($this as $key => $value) {
+        //         $enumerable = $selectorFunc($value, $key);
+
+        //         foreach ($enumerable as $innerKey => $innerValue) {
+        //             yield $innerKey => $innerValue;
+        //         }
+        //     }
+        // })(), $TResult);
     }
 
     // selectMany
@@ -365,7 +384,7 @@ trait LinqTrait {
      * @throws InvalidArgumentException 
      */
     public function skipWhile(Closure $predicate): IEnumerable {
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         return Enumerator::new((function() use ($predicateFunc): Generator {
             $skipping = true;
@@ -468,7 +487,7 @@ trait LinqTrait {
      * @throws InvalidArgumentException 
      */
     public function takeWhile(Closure $predicate): IEnumerable {
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         return Enumerator::new((function() use ($predicateFunc): Generator {
             foreach ($this as $key => $value) {
@@ -484,16 +503,26 @@ trait LinqTrait {
     /**
      * Creates an array from a sequence
      * 
+     * BUG: TODO: FIX: key is always return 0
+     * 
      * @return array 
      */
     public function toArray(?Closure $keySelector = null): array {
+        $array = [];
+
         if ($keySelector === null) {
-            return iterator_to_array($this->getIterator());
+            foreach ($this->getIterator() as $key => $value) {
+                if ($key === null) {
+                    $array[] = $value;
+                } else {
+                    $array[$key] = $value;
+                }
+            }
+
+            return $array;
         }
 
         $keySelector = Func::new($keySelector, $this->T(), TypeHintFactory::keyTypes(), TypeHintFactory::keyTypes(true));
-
-        $array = [];
 
         foreach ($this as $key => $value) {
             $key = $keySelector($value, $key);
@@ -529,7 +558,7 @@ trait LinqTrait {
      * @throws InvalidArgumentException 
      */
     public function where(Closure $predicate): IEnumerable {
-        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::keyTypes(), Type::bool());
+        $predicateFunc = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
 
         return Enumerator::new((function() use ($predicateFunc): Generator {
             foreach ($this as $key => $value) {

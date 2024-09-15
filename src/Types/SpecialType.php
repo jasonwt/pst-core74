@@ -19,6 +19,7 @@ class SpecialType extends CoreObject implements ITypeHint {
         "trait" => "trait",
         "enum" => "enum",
         "resource" => "resource",
+        "variatic" => "variatic", // TODO: not implemented yet
     ];
 
     private static array $isAssignableCache = [];

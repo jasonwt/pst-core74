@@ -33,6 +33,7 @@ interface IEnumerable extends Countable, IteratorAggregate, IToArray {
     //public function orderBy(Closure $selector, ?IComparer $comparer = null): IEnumerable;
     // orderByDescending
     public function select(Closure $selector, ?ITypeHint $TResult = null): IEnumerable;
+    public function selectMany(Closure $selector, ?ITypeHint $TResult = null): IEnumerable;
     // selectMany
     public function sequenceEqual(Traversable $iterable, ?IEqualityComparer $equalityComparer = null): bool;
     // single

@@ -14,7 +14,6 @@ use Pst\Core\Runtime\Traits\RuntimeSettingsTrait;
 use Closure;
 use ReflectionFunction;
 use InvalidArgumentException;
-use Pst\Core\Types\TypeHintFactoryFactory;
 
 trait TypedClosureTrait {
     use RuntimeSettingsTrait;
@@ -153,7 +152,9 @@ trait TypedClosureTrait {
             }
         }
 
-        if (count($closureParametersTypeHintNames) !== count($validClosureParametersTypes)) {
+        
+
+        if (count($closureParametersTypeHintNames) > count($validClosureParametersTypes)) {
             throw new InvalidArgumentException("The closure has '" . count($closureParametersTypeHintNames) . "' parameters, but '" . count($validClosureParametersTypes) . "' type hints were specified.");
         }
 
@@ -161,19 +162,33 @@ trait TypedClosureTrait {
             $closureParameterNames = array_keys($closureParametersTypeHintNames);
 
             for ($i = 0; $i < count($validClosureParametersTypes); $i ++) {
-                $closureParameterName = $closureParameterNames[$i];
-
-                if (($closureParameterTypeHintName = $closureParametersTypeHintNames[$closureParameterNames[$i]]) === "void") {
-                    throw new InvalidArgumentException("The closure parameter type hint for property: '$closureParameterName' can not be void.");
-                }
+                $closureParameterName = $closureParameterNames[$i] ?? "validClosureParameterTypeHintName Index: $i";
 
                 if (($validClosureParameterTypeHintName = $this->TypedClosureTrait__validParametersTypes[$i]) === "void") {
-                    throw new InvalidArgumentException("The valid closure parameter type hint for property: '$closureParameterName' can not be void.");
+                    throw new InvalidArgumentException("The valid closure parameter type hint for property: '$closureParameterName' can not be only void.");
                 }
+
+                $validClosureParameterTypeHint = TypeHintFactory::tryParse($validClosureParameterTypeHintName);
+
+                
+
+                if ($i >= count($closureParametersTypeHintNames)) {
+                    if ($validClosureParameterTypeHint->isAssignableFrom(TypeHintFactory::void())) {
+                        continue;
+                    }
+
+                    throw new InvalidArgumentException("The closure has '" . count($closureParametersTypeHintNames) . "' parameters, but '" . count($validClosureParametersTypes) . "' type hints were specified.");
+                }
+
+                if (($closureParameterTypeHintName = $closureParametersTypeHintNames[$closureParameterNames[$i]]) === "void") {
+                    throw new InvalidArgumentException("The closure parameter type hint for property: '$closureParameterName' should not be void.");
+                }
+
+                
 
                 if ($validClosureParameterTypeHintName !== "undefined" && $validClosureParameterTypeHintName !== $closureParameterTypeHintName) {
                     if ($closureParameterTypeHintName !== "undefined") {
-                        $validClosureParameterTypeHint = TypeHintFactory::tryParse($validClosureParameterTypeHintName);
+                        
                         $closureParameterTypeHint = TypeHintFactory::tryParse($closureParameterTypeHintName);
 
                         if (!$validClosureParameterTypeHint->isAssignableFrom($closureParameterTypeHint)) {
