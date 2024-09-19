@@ -18,15 +18,16 @@ use Pst\Core\Collections\Enumerator;
 use Pst\Core\Collections\IEnumerable;
 use Pst\Core\Collections\Collection;
 use Pst\Core\Collections\ICollection;
+use Pst\Core\Collections\IReadOnlyCollection;
+use Pst\Core\Collections\ReadOnlyCollection;
 
 use Pst\Core\Exceptions\NotImplementedException;
 use Pst\Core\Exceptions\InvalidOperationException;
 
 use Closure;
 use Generator;
-use InvalidArgumentException;
-
 use Traversable;
+use InvalidArgumentException;
 
 trait LinqTrait {
     public abstract function T(): ITypeHint;
@@ -227,43 +228,6 @@ trait LinqTrait {
 
     // lastOrDefault
 
-    /**
-     * Sorts the elements of a sequence in ascending order according to a key
-     * 
-     * @param Closure $selector 
-     * @param null|IComparer $comparer 
-     * @param null|ITypeHint $TResult 
-     * 
-     * @return IEnumerable 
-     * 
-     * @throws InvalidArgumentException 
-     * @throws InvalidOperationException 
-     */
-    public function orderBy(Closure $selector, ?IComparer $comparer = null): IEnumerable {
-        
-
-        
-        throw new NotImplementedException("Not implemented");
-        // $TResult ??= TypeHintFactory::undefined();
-
-        // $selectorFunc = Func::new($selector, $this->T(), TypeHintFactory::keyTypes(), TypeHintFactory::keyTypes());
-
-        // $comparer ??= Comparer::default($TResult);
-
-        // $orderArray = $this->select($selectorFunc->getClosure())->toArray();
-
-        
-
-        // usort($orderArray, function($a, $b) use ($selectorFunc, $comparer) {
-        //     return $comparer->compare($selectorFunc($a), $selectorFunc($b));
-        // });
-
-        // print_r($orderArray);
-
-        // throw new InvalidOperationException("Not implemented");
-        // return Enumerator::new($orderArray, $this->T());
-    }
-
     // orderBy
 
     // orderByDescending
@@ -288,9 +252,30 @@ trait LinqTrait {
         
         return Enumerator::new((function() use ($selectorFunc): Generator {
             foreach ($this as $key => $value) {
-                yield $selectorFunc($value, $key);
+                //yield $selectorFunc($value, $key);
+                yield $key => $selectorFunc($value, $key);
             }
         })(), $TResult);
+    }
+
+
+    /**
+     * Specifies a key selector function to select the key for each element
+     * 
+     * @param Closure $keySelector 
+     * 
+     * @return IEnumerable 
+     * @throws InvalidArgumentException 
+     * @throws NotImplementedException 
+     */    
+    public function selectKey(Closure $keySelector): IEnumerable {
+        $keySelector = Func::new($keySelector, $this->T(), TypeHintFactory::tryParse("int|string|void"), TypeHintFactory::keyTypes(true));
+
+        return Enumerator::new((function() use ($keySelector): Generator {
+            foreach ($this as $key => $value) {
+                yield $keySelector($value, $key) => $value;
+            }
+        })(), $this->T());
     }
 
     public function selectMany(Closure $selector, ?ITypeHint $TResult = null): IEnumerable {
@@ -522,7 +507,7 @@ trait LinqTrait {
             return $array;
         }
 
-        $keySelector = Func::new($keySelector, $this->T(), TypeHintFactory::keyTypes(), TypeHintFactory::keyTypes(true));
+        $keySelector = Func::new($keySelector, $this->T(), TypeHintFactory::tryParse("int|string|void"), TypeHintFactory::keyTypes(true));
 
         foreach ($this as $key => $value) {
             $key = $keySelector($value, $key);
@@ -546,6 +531,44 @@ trait LinqTrait {
      */
     public function toCollection(?Closure $keySelector = null): ICollection {
         return new Collection($this->toArray($keySelector), $this->T());
+    }
+
+    /**
+     * Creates a ReadOnlyCollection from a sequence
+     * 
+     * @param null|Closure $keySelector 
+     * 
+     * @return IReadOnlyCollection 
+     */
+    public function toReadonlyCollection(?Closure $keySelector = null): IReadOnlyCollection {
+        return new ReadOnlyCollection($this->toArray($keySelector), $this->T());
+    }
+
+    /**
+     * Returns the values of a sequence as an IEnumerable
+     * 
+     * @param null|Closure $predicate 
+     * 
+     * @return IEnumerable 
+     */
+    public function values(?Closure $predicate = null): IEnumerable {
+        if ($predicate === null) {
+            return Enumerator::new((function(): Generator {
+                foreach ($this as $key => $value) {
+                    yield $value;
+                }
+            })(), $this->T());
+        }
+
+        $predicate = Func::new($predicate, $this->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+
+        return Enumerator::new((function() use ($predicate): Generator {
+            foreach ($this as $key => $value) {
+                if ($predicate($value, $key)) {
+                    yield $value;
+                }
+            }
+        })(), $this->T());
     }
 
     /**

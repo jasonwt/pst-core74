@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Pst\Core\Collections;
 
-use Pst\Core\IComparer;
 use Pst\Core\IToArray;
 use Pst\Core\IEqualityComparer;
 use Pst\Core\Types\ITypeHint;
@@ -30,9 +29,10 @@ interface IEnumerable extends Countable, IteratorAggregate, IToArray {
 
     public function last(?Closure $predicate = null);
     // lastOrDefault
-    //public function orderBy(Closure $selector, ?IComparer $comparer = null): IEnumerable;
+    // public function orderBy(Closure $selector, ?IComparer $comparer = null): IEnumerable;
     // orderByDescending
     public function select(Closure $selector, ?ITypeHint $TResult = null): IEnumerable;
+    public function selectKey(Closure $keySelector): IEnumerable;
     public function selectMany(Closure $selector, ?ITypeHint $TResult = null): IEnumerable;
     // selectMany
     public function sequenceEqual(Traversable $iterable, ?IEqualityComparer $equalityComparer = null): bool;
@@ -40,12 +40,19 @@ interface IEnumerable extends Countable, IteratorAggregate, IToArray {
     // singleOrDefault
     public function skip(int $count): IEnumerable;
     public function skipWhile(Closure $predicate): IEnumerable;
+
     public function sum(?Closure $selector = null);
+
     public function swapKeysAndValues(): IEnumerable;
+
     public function take(int $count): IEnumerable;
     public function takeWhile(Closure $predicate): IEnumerable;
+
     public function toArray(?Closure $keySelector = null): array;
     public function toCollection(?Closure $keySelector = null): ICollection;
+    public function toReadonlyCollection(?Closure $keySelector = null): IReadOnlyCollection;
+
+    public function values(?Closure $predicate = null): IEnumerable;
 
     public function where(Closure $predicate): IEnumerable;
 }

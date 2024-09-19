@@ -35,24 +35,27 @@ class Enumerator implements IEnumerable {
      * @throws InvalidArgumentException 
      */
     protected function __construct($iterator, ?ITypeHint $T = null) {
+        $iterableT = null;
+
         if (is_array($iterator)) {
             $iterator = new ArrayIterator($iterator);
-            $T ??= TypeHintFactory::undefined();
         } else if ($iterator instanceof IEnumerable) {
-            if ($T !== null && $T !== $iterator->T()) {
-                throw new InvalidArgumentException("Type hint mismatch");
-            } else {
-                $T = $iterator->T();
-            }
-        } else if ($iterator instanceof Traversable) {
-            $T ??= TypeHintFactory::undefined();
-        } else {
+            $iterableT = $iterator->T();
+        } else if (!$iterator instanceof Traversable) {
             throw new InvalidArgumentException("iterator argument must implement IEnumerable, Traversable or be iterable.");
+        }
+
+        if ($iterableT !== null) {
+            if ($T !== null && !$T->isAssignableFrom($iterableT)) {
+                throw new InvalidArgumentException("Type hint mismatch.");
+            }
+
+            $T = $iterableT;
         }
 
         $this->iterator = $iterator;
 
-        $this->T = (string) ($T ?? TypeHintFactory::mixed());
+        $this->T = (string) ($T ?? TypeHintFactory::undefined());
 
         if ($this->T === "void") {
             throw new InvalidArgumentException("Type hint cannot be void");

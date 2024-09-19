@@ -79,7 +79,7 @@ class DI extends CoreObject implements ICoreObject {
      */
     public static function addTransient($serviceType, $implementation, ?string $key = null): void {
         if (is_string($serviceType)) {
-            $serviceType = Type::typeOf(trim($serviceType));
+            $serviceType = Type::new(trim($serviceType));
         } else if (!$serviceType instanceof Type) {
             throw new InvalidArgumentException("Service type must be a string or a Type.");
         }
@@ -99,7 +99,7 @@ class DI extends CoreObject implements ICoreObject {
 
     public static function addSingleton($serviceType, $implementation, ?string $key = null): void {
         if (is_string($serviceType)) {
-            $serviceType = Type::typeOf(trim($serviceType));
+            $serviceType = Type::new(trim($serviceType));
         } else if (!$serviceType instanceof Type) {
             throw new InvalidArgumentException("Service type must be a string or a Type.");
         }

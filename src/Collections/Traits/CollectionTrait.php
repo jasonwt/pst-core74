@@ -13,10 +13,10 @@ use Pst\Core\Collections\Enumerator;
 use Pst\Core\Collections\IEnumerable;
 use Pst\Core\Collections\ReadOnlyCollection;
 
+use Closure;
 use Exception;
 use Traversable;
 use ArrayIterator;
-use Closure;
 use InvalidArgumentException;
 
 /**
@@ -32,29 +32,38 @@ trait CollectionTrait {
     use LinqTrait {
         count as private linqCount;
         keys as private linqKeys;
+        values as private linqValues;
     }
 
-    private string $CollectionTrait_itemsTypeHint;
-    private array $CollectionTrait_items = [];
+    private string $collectionTraitT;
+    private array $collectionTraitItems = [];
 
     public function __construct($iterable, ?ITypeHint $T = null) {
+        $iterableT = null;
+
         if (is_array($iterable)) {
             $iterable = new ArrayIterator($iterable);
-            $T ??= TypeHintFactory::undefined();
         } else if ($iterable instanceof IEnumerable) {
-            if ($T !== null && $T !== $iterable->T()) {
-                throw new InvalidArgumentException("Type hint mismatch");
-            }
-
-            $T = $iterable->T();
-        } else if ($iterable instanceof Traversable) {
-            $T ??= TypeHintFactory::undefined();
-        } else {
+            $iterableT = $iterable->T();
+            $iterable = $iterable->getIterator();
+        } else if (!$iterable instanceof Traversable) {
             throw new InvalidArgumentException("iterable argument must implement ICollection, Traversable or be iterable.");
         }
 
-        $this->CollectionTrait_itemsTypeHint = (string) ($T ?? TypeHintFactory::mixed());
-        $this->CollectionTrait_items = [];
+        if ($iterableT !== null) {
+            if ($T !== null && !$T->isAssignableFrom($iterableT)) {
+                throw new InvalidArgumentException("Type hint mismatch.");
+            }
+
+            $T = $iterableT;
+        }
+
+        $this->collectionTraitT = (string) ($T ?? TypeHintFactory::undefined());
+        $this->collectionTraitItems = [];
+
+        if ($this->collectionTraitT === "void") {
+            throw new InvalidArgumentException("Type hint cannot be void");
+        }
 
         foreach ($iterable as $key => $value) {
             $this->add($value, $key);
@@ -62,19 +71,19 @@ trait CollectionTrait {
     }
 
     public function T(): ITypeHint {
-        return TypeHintFactory::tryParse($this->CollectionTrait_itemsTypeHint);
+        return TypeHintFactory::tryParse($this->collectionTraitT);
     }
 
     public function getIterator(): Traversable {
-        return new ArrayIterator($this->CollectionTrait_items);
+        return new ArrayIterator($this->collectionTraitItems);
     }
 
-    public function offsetExists(mixed $key): bool {
+    public function offsetExists($key): bool {
         if (!is_string($key) && !is_int($key)) {
             throw new Exception("Key must be a string or an integer.");
         }
 
-        return array_key_exists($key, $this->CollectionTrait_items);
+        return array_key_exists($key, $this->collectionTraitItems);
     }
 
     public function offsetGet($key) {
@@ -82,7 +91,7 @@ trait CollectionTrait {
             throw new Exception("Key: '{(string) $key}' does not exist.");
         }
 
-        return $this->CollectionTrait_items[$key];
+        return $this->collectionTraitItems[$key];
     }
 
     public function offsetSet($key, $value): void {
@@ -102,9 +111,9 @@ trait CollectionTrait {
     }
 
     public function add($item, $key = null): void {
-        $itemsTypeHint = TypeHintFactory::tryParse($this->CollectionTrait_itemsTypeHint);
+        $itemsTypeHint = TypeHintFactory::tryParse($this->collectionTraitT);
 
-        if (!$itemsTypeHint->isAssignableFrom(Type::fromValue($item))) {
+        if (!$itemsTypeHint->isAssignableFrom(Type::typeOf($item))) {
             throw new Exception("Item is not assignable to the type hint.");
         }
 
@@ -113,9 +122,9 @@ trait CollectionTrait {
                 throw new Exception("Key must be a string or an integer.");
             }
 
-            $this->CollectionTrait_items[$key] = $item;
+            $this->collectionTraitItems[$key] = $item;
         } else {
-            $this->CollectionTrait_items[] = $item;
+            $this->collectionTraitItems[] = $item;
         }
         
     }
@@ -127,11 +136,11 @@ trait CollectionTrait {
             return $this->linqCount(...$funcGetArgs);
         }
         
-        return count($this->CollectionTrait_items);
+        return count($this->collectionTraitItems);
     }
 
     public function clear(): void {
-        $this->CollectionTrait_items = [];
+        $this->collectionTraitItems = [];
     }
 
     public function containsKey($key): bool {
@@ -139,11 +148,11 @@ trait CollectionTrait {
     }
 
     public function contains($item): bool {
-        return in_array($item, $this->CollectionTrait_items);
+        return in_array($item, $this->collectionTraitItems);
     }
 
     public function indexOf($item) {
-        if (($indexOf = array_search($item, $this->CollectionTrait_items)) === false) {
+        if (($indexOf = array_search($item, $this->collectionTraitItems)) === false) {
             return null;
         }
 
@@ -152,15 +161,19 @@ trait CollectionTrait {
 
     public function keys(?Closure $predicate = null): IEnumerable {
         if ($predicate === null) {
-            return Enumerator::new(array_keys($this->CollectionTrait_items), TypeHint::keyTypes());
+            return Enumerator::new(array_keys($this->collectionTraitItems), TypeHintFactory::keyTypes());
         }
 
         return $this->linqKeys($predicate);
         
     }
 
-    public function values(): IEnumerable {
-        return new ReadOnlyCollection(array_values($this->CollectionTrait_items), TypeHintFactory::tryParse($this->CollectionTrait_itemsTypeHint));
+    public function values(?Closure $predicate = null): IEnumerable {
+        if ($predicate === null) {
+            return Enumerator::new(array_values($this->collectionTraitItems), TypeHintFactory::tryParse($this->collectionTraitT));
+        }
+
+        return $this->linqValues($predicate);
     }
 
     public function remove($key): bool {
@@ -168,11 +181,11 @@ trait CollectionTrait {
             throw new Exception("Key must be a string or an integer.");
         }
 
-        if (!array_key_exists($key, $this->CollectionTrait_items)) {
+        if (!array_key_exists($key, $this->collectionTraitItems)) {
             return false;
         }
 
-        unset($this->CollectionTrait_items[$key]);
+        unset($this->collectionTraitItems[$key]);
         
         return true;
     }

@@ -39,7 +39,7 @@ final class Convert {
      * 
      */
     public static function toBoolean($value): bool {
-        $valueType = Type::fromValue($value);
+        $valueType = Type::typeOf($value);
 
         if ($valueType->isValueType() || $valueType->fullName() === "null") {
             return (bool) $value;
@@ -63,7 +63,7 @@ final class Convert {
      * 
      */
     public static function toInteger($value): int {
-        $valueType = Type::fromValue($value);
+        $valueType = Type::typeOf($value);
 
         if ($valueType->isValueType()  || $valueType->fullName() === "null") {
             return (int) $value;
@@ -87,7 +87,7 @@ final class Convert {
      * 
      */
     public static function toFloat($value): float {
-        $valueType = Type::fromValue($value);
+        $valueType = Type::typeOf($value);
 
         if ($valueType->isValueType()  || $valueType->fullName() === "null") {
             return (float) $value;
@@ -111,7 +111,7 @@ final class Convert {
      * 
      */
     public static function toString($value): string {
-        $valueType = Type::fromValue($value);
+        $valueType = Type::typeOf($value);
 
         if ($valueType->isValueType()  || $valueType->fullName() === "null") {
             return (string) $value;
@@ -124,22 +124,15 @@ final class Convert {
         throw new InvalidCastException();
     }
 
-    /**
-     * Converts the specified value to the specified type.
-     * 
-     * @param $value The value to convert.
-     * @param Type $conversionType The type to convert the value to.
-     * 
-     * @return mixed The value converted to the specified type.
-     * 
-     * @throws InvalidCastException The value cannot be converted to the specified type.
-     * 
-     */
-    public static function changeType($value, Type $conversionType) {
-        $valueType = Type::fromValue($value);
+    public static function tryChangeType($value, Type $conversionType) {
+        $valueType = Type::typeOf($value);
 
         if ($value instanceof IConvertible) {
-            return $value->toType($conversionType);
+            try {
+                return $value->toType($conversionType);
+            } catch (InvalidCastException $e) {
+                return null;
+            }
         }
         
         if ($valueType->isValueType() || $valueType->fullName() === "null") {
@@ -155,6 +148,25 @@ final class Convert {
                         return (string) $value;
                 }
             }
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts the specified value to the specified type.
+     * 
+     * @param $value The value to convert.
+     * @param Type $conversionType The type to convert the value to.
+     * 
+     * @return mixed The value converted to the specified type.
+     * 
+     * @throws InvalidCastException The value cannot be converted to the specified type.
+     * 
+     */
+    public static function changeType($value, Type $conversionType) {
+        if (($convertedValue = self::tryChangeType($value, $conversionType)) !== null) {
+            return $convertedValue;
         }
 
         throw new InvalidCastException();

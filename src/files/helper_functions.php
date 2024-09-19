@@ -36,6 +36,25 @@ function dd($input, bool $terminate = true): string {
     return $output;
 }
 
+function pd($input, bool $terminate = true): string {
+    $backtrace = array_map(function($v) {
+        return $v["file"] . ":" . $v["line"];
+        
+    }, debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1));
+
+    $output = "<pre>";
+    $output .= print_r($input, true);
+    $output .= "\n\n" . implode("\n", $backtrace);
+
+    if ($terminate) {
+        echo "\n" . $output  . "\n\n" . "</pre>";
+
+        exit;
+    }
+
+    return $output . "</pre>";
+}
+
 function toArray($value, $key = null): array {
     $arrayValue = [];
 

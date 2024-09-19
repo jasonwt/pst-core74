@@ -20,7 +20,7 @@ use Pst\Core\Types\Type;
  */
 trait CoreObjectTraits {
     private array $coreObjectTraitCache = [];
-    private ?int $CoreObjectTrait_hashCode = null;
+    private ?int $coreObjectTraitHashCode = null;
 
     public function getNamespace(): string {
         if (isset($this->coreObjectTraitCache[__FUNCTION__])) {
@@ -61,7 +61,7 @@ trait CoreObjectTraits {
      * @return int The hash code of the object.
      */
     public function getHashCode(): int {
-        return ($this->CoreObjectTrait_hashCode ??= hexdec(substr(hash("sha256", serialize($this)), 0, PHP_INT_SIZE * 2)));
+        return ($this->coreObjectTraitHashCode ??= hexdec(substr(hash("sha256", serialize($this)), 0, PHP_INT_SIZE * 2)));
     }
 
     /**

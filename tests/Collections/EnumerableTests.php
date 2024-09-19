@@ -52,8 +52,8 @@ Should::executeTests(function() {
     
 //    print_r($newTestArray()->orderBy(fn($v, $k) => $k)->toArray());
 
-    Should::equal([0,2,4,6,8,10], $newTestArray()->select(fn($x, $k) => $x * 2)->toArray());
-    Should::equal([0,"one",2,"three",4,"five"], $newTestArray()->select(fn($x, $k) => $k)->toArray());
+    Should::equal([0=>0,"one"=>2,2=>4,"three"=>6, 4=>8,"five"=>10], $newTestArray()->select(fn($x, $k) => $x * 2)->toArray());
+    Should::equal([0=>0,"one"=>"one",2=>2,"three"=>"three",4=>4,"five"=>"five"], $newTestArray()->select(fn($x, $k) => $k)->toArray());
 
     // Should::equal($newTestArray()->sequenceEqual($newTestArray()));
 
@@ -74,7 +74,7 @@ Should::executeTests(function() {
     Should::equal([0,1,2,3,4,5], $newTestArray()->toArray(fn($v, $k) => $v));
 
     
-    print_r($results);
+    //print_r($results);
 
     
 });
