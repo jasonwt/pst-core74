@@ -6,9 +6,9 @@ declare(strict_types=1);
 namespace Pst\Core\Types;
 
 use Pst\Core\Enum;
-use Pst\Core\ITryParse;
+use Pst\Core\Interfaces\ITryParse;
 use Pst\Core\CoreObject;
-use Pst\Core\ICoreObject;
+use Pst\Core\Interfaces\ICoreObject;
 
 use Pst\Core\Exceptions\InvalidOperationException;
 

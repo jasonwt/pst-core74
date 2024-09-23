@@ -5,11 +5,14 @@ declare(strict_types=1);
 
 namespace Pst\Core\Collections;
 
-use ArrayAccess;
-use Closure;
-use Countable;
+use Pst\Core\Interfaces\ICloneable;
+use Pst\Core\Enumerable\IImmutableEnumerable;
 
-interface IReadOnlyCollection extends ArrayAccess, IEnumerable, Countable {
+use Closure;
+use ArrayAccess;
+
+interface IReadonlyCollection extends IImmutableEnumerable, ICloneable, ArrayAccess {
+    // readonly methods
     public function count(?Closure $predicate = null): int;
     public function contains($item): bool;
     public function containsKey($key): bool;

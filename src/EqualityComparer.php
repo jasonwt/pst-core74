@@ -5,10 +5,8 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
-
-use Closure;
+use Pst\Core\Types\TypeHintFactory;
 
 abstract class EqualityComparer extends CoreObject implements IEqualityComparer {
     public static function default(?ITypeHint $T = null): IEqualityComparer {

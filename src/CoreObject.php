@@ -5,7 +5,8 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Traits\CoreObjectTraits;
+use Pst\Core\CoreObjectTrait;
+use Pst\Core\Interfaces\ICoreObject;
 
 /**
  * Represents a core object.
@@ -16,8 +17,8 @@ use Pst\Core\Traits\CoreObjectTraits;
  * 
  * @since 1.0.0
  * 
- * @see CoreObjectTraits
+ * @see CoreObjectTrait
  */
 abstract class CoreObject implements ICoreObject {
-    use CoreObjectTraits;
+    use CoreObjectTrait;
 }

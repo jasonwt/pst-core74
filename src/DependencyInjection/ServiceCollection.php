@@ -8,8 +8,11 @@ namespace Pst\Core\DependencyInjection;
 use Pst\Core\Func;
 use Pst\Core\CoreObject;
 use Pst\Core\Types\Type;
-use Pst\Core\Collections\IEnumerable;
-use Pst\Core\Collections\Traits\LinqTrait;
+use Pst\Core\Collections\Collection;
+use Pst\Core\Collections\ICollection;
+use Pst\Core\Enumerable\IEnumerable;
+use Pst\Core\Enumerable\Enumerator;
+use Pst\Core\Enumerable\ImmutableEnumerableLinqTrait;
 
 use Pst\Core\Exceptions\ContainerException;
 use Pst\Core\Exceptions\DependencyNotFoundException;
@@ -17,39 +20,34 @@ use Pst\Core\Exceptions\DependencyNotFoundException;
 use Closure;
 use Traversable;
 use ArrayIterator;
+use IteratorAggregate;
+use Pst\Core\Collections\IReadonlyCollection;
+use Pst\Core\Collections\ReadOnlyCollection;
 use ReflectionClass;
 
-
-class ServiceCollection extends CoreObject implements IServiceCollection {
-    use LinqTrait {
-        count as private linqCount;
-    }
-
+class ServiceCollection extends CoreObject implements IteratorAggregate, IServiceCollection {
     private array $services = [];
+    private ICollection $serviceCollection;
 
     /**
      * Initializes a new instance of ServiceCollection.
      * 
      * @param IEnumerable|array $services The services to add to the collection.
      */
-    public function __construct($services = []) {
-        if ($services instanceof IEnumerable) {
-            $services = $services->toArray();
-        } else if (!is_array($services)) {
-            throw new ContainerException("Services must be an array or an instance of IEnumerable.");
-        }
+    public function __construct(iterable $services = []) {
+        $this->serviceCollection = Collection::new($services, Type::typeOf(ServiceDescriptor::class));
 
-        foreach ($services as $alias => $service) {
+        foreach (Enumerator::new($services) as $alias => $service) {
             if (!is_string($alias) || is_numeric($alias)) {
                 throw new ContainerException("Service alias must be a string.");
             }
 
-            $this->add($service, $alias);
+            $this->serviceCollection->add($service, $alias);
         }
     }
 
     public function getIterator(): Traversable {
-        return new ArrayIterator($this->services);
+        return $this->serviceCollection;
     }
 
     public function count(?Closure $predicate = null): int {
@@ -119,15 +117,20 @@ class ServiceCollection extends CoreObject implements IServiceCollection {
      * @throws ContainerException
      */
     public function createServiceProvider(): IServiceProvider {
-        return new class($this->services) extends CoreObject implements IServiceProvider {
-            use LinqTrait {
-                count as private linqCount;
+        return new class($this->services) extends CoreObject implements IteratorAggregate, IServiceProvider {
+            use ImmutableEnumerableLinqTrait {
+                linqKeys as keys;
+                linqValues as values;
             }
 
             private array $services = [];
 
             public function __construct(array $services) {
                 $this->services = $services;
+            }
+
+            public function getImmutableIterator(): Traversable {
+                return $this->getIterator();
             }
 
             public function getIterator(): Traversable {
@@ -151,7 +154,7 @@ class ServiceCollection extends CoreObject implements IServiceCollection {
             }
 
             public function getServiceByKey(string $serviceKey): ?object {
-                if (($service = $this->services[$serviceKey]) === null) {
+                if (($service = ($this->services[$serviceKey] ?? null)) === null) {
                     return null;
                 }
 
@@ -208,4 +211,18 @@ class ServiceCollection extends CoreObject implements IServiceCollection {
             }
         };
     }
+
+    public function toArray(): array {
+        return $this->serviceCollection->toArray();
+    }
+
+    public function toCollection(): ICollection {
+        return Collection::new($this->serviceCollection);
+    }
+
+    public function toReadonlyCollection(): IReadonlyCollection {
+        return ReadonlyCollection::new($this->serviceCollection);
+    }
+
+    
 }

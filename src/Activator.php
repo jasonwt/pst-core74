@@ -8,8 +8,9 @@ namespace Pst\Core;
 use Pst\Core\Types\Type;
 
 use Closure;
-use InvalidArgumentException;
 use ReflectionClass;
+
+use InvalidArgumentException;
 
 /**
  * Provides a mechanism for creating instances of types.

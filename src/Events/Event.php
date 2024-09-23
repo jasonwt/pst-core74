@@ -37,7 +37,7 @@ class Event implements IEvent {
      */
     public function __construct(object $sender, ITypeHint ...$eventArgumentTypes) {
         $this->sender = $sender;
-        $this->eventArgumentTypes = array_merge([TypeHintFactory::object()], $eventArgumentTypes);
+        $this->eventArgumentTypes = array_map(fn($v) => (string) $v, array_merge([TypeHintFactory::object()], $eventArgumentTypes));
     }
 
     /**
@@ -57,7 +57,7 @@ class Event implements IEvent {
             throw new InvalidArgumentException("The handler already exists.");
         }
 
-        Action::new($handler, ...$this->eventArgumentTypes);
+        Action::new($handler, ...array_map(fn($v) => TypeHintFactory::tryParse($v), $this->eventArgumentTypes));
 
         $this->handlers[$handlerId] = [
             "handler" => $handler,

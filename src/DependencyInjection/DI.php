@@ -6,7 +6,7 @@ declare(strict_types=1);
 namespace Pst\Core\DependencyInjection;
 
 use Pst\Core\CoreObject;
-use Pst\Core\ICoreObject;
+use Pst\Core\Interfaces\ICoreObject;
 use Pst\Core\Types\Type;
 
 use InvalidArgumentException;

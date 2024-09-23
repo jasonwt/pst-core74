@@ -5,10 +5,8 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
-
-use Closure;
+use Pst\Core\Types\TypeHintFactory;
 
 abstract class Comparer extends CoreObject implements IComparer {
     public static function default(?ITypeHint $T = null): IComparer {

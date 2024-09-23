@@ -9,15 +9,9 @@ declare(strict_types=1);
 require_once(__DIR__ . "/../../vendor/autoload.php");
 
 use Pst\Core\Types\Type;
-use Pst\Core\Collections\Enumerator;
-use Pst\Core\Collections\IEnumerable;
-use Pst\Core\Collections\ReadOnlyCollection;
+use Pst\Core\Collections\ReadonlyCollection;
+
 use Pst\Testing\Should;
-
-use function Pst\Core\dd;
-
-//use Exception;
-
 
 Should::executeTests(function() {
     $testArray = [
@@ -29,7 +23,7 @@ Should::executeTests(function() {
         "five" => 5
     ];
 
-    $readOnlyCollection = new ReadOnlyCollection($testArray, Type::int());
+    $readOnlyCollection = new ReadonlyCollection($testArray, Type::int());
 
     Should::equal($testArray[0], $readOnlyCollection[0]);
     Should::equal($testArray["one"], $readOnlyCollection["one"]);

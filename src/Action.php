@@ -7,7 +7,7 @@ namespace Pst\Core;
 use Pst\Core\Types\Type;
 use Pst\Core\Types\ITypeHint;
 
-use Pst\Core\Traits\TypedClosureTrait;
+use Pst\Core\Types\TypedClosureTrait;
 
 use Closure;
 use InvalidArgumentException;

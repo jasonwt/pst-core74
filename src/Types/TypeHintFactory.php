@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Pst\Core\Types;
 
-use Pst\Core\ITryParse;
+use Pst\Core\Interfaces\ITryParse;
 use Pst\Core\Exceptions\NotImplementedException;
 
 use InvalidArgumentException;

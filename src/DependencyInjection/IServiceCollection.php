@@ -5,17 +5,13 @@ declare(strict_types=1);
 
 namespace Pst\Core\DependencyInjection;
 
-
 use Pst\Core\Types\Type;
-use Pst\Core\Collections\IEnumerable;
-
-use Countable;
-
+use Pst\Core\Enumerable\IEnumerable;
 
 /**
  * Represents a collection of services.
  */
-interface IServiceCollection extends IEnumerable, Countable {
+interface IServiceCollection extends IEnumerable {
     public function createServiceProvider(): IServiceProvider;
 
     /**
