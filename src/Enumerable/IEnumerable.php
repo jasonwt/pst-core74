@@ -16,5 +16,6 @@ interface IEnumerable extends ICoreObject, Traversable, IEnumerableLinq {
     public function T(): ITypeHint;
     public function TKey(): ITypeHint;
 
+    public function isRewindable(): bool;
     public function getIterator(): Iterator;
 }

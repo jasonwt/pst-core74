@@ -120,7 +120,7 @@ final class TypeHintFactory implements ITryParse{
 
 
     public static function optional(... $types): TypeUnion {
-        return TypeUnion::new(... [... $types, "void"]);
+        return TypeUnion::create(... [... $types, "void"]);
     }
 
     /**
@@ -133,7 +133,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException 
      */
     public static function union(... $types): TypeUnion {
-        return TypeUnion::new(...$types);
+        return TypeUnion::create(...$types);
     }
 
     /**

@@ -37,12 +37,20 @@ trait EnumerableLinqTrait {
         return Linq::count($this, $predicate);
     }
 
-    public function first(?Closure $predicate = null, ?ITypeHint $T = null) {
-        return Linq::first($this, $predicate, $T);
+    public function first(?Closure $predicate = null) {
+        return Linq::first($this, $predicate);
     }
 
-    public function firstOrDefault(?Closure $predicate = null, ?ITypeHint $T = null) {
-        return Linq::firstOrDefault($this, $predicate, $T);
+    public function firstKey(?Closure $predicate = null) {
+        return Linq::firstKey($this, $predicate);
+    }
+
+    public function firstOrDefault(?Closure $predicate = null) {
+        return Linq::firstOrDefault($this, $predicate);
+    }
+
+    public function firstKeyOrDefault(?Closure $predicate = null) {
+        return Linq::firstKeyOrDefault($this, $predicate);
     }
 
     public function iterationCount(Closure $predicate): int {
@@ -53,28 +61,36 @@ trait EnumerableLinqTrait {
         return Linq::keys($this, $predicate);
     }
 
-    public function last(?Closure $predicate = null, ?ITypeHint $T = null) {
-        return Linq::last($this, $predicate, $T);
+    public function last(?Closure $predicate = null) {
+        return Linq::last($this, $predicate);
     }
 
-    public function lastOrDefault(?Closure $predicate = null, ?ITypeHint $T = null) {
-        return Linq::lastOrDefault($this, $predicate, $T);
+    public function lastKey(?Closure $predicate = null) {
+        return Linq::lastKey($this, $predicate);
     }
 
-    public function select(?Closure $selector, ?Closure $keySelector = null, ?ITypeHint $T = null): IEnumerable {
-        return Linq::select($this, $selector, $keySelector, $T);
+    public function lastOrDefault(?Closure $predicate = null) {
+        return Linq::lastOrDefault($this, $predicate);
+    }
+
+    public function lastKeyOrDefault(?Closure $predicate = null) {
+        return Linq::lastKeyOrDefault($this, $predicate);
+    }
+
+    public function select(?Closure $selector, ?Closure $keySelector = null, ?ITypeHint $T = null, ?ITypeHint $TKey = null): IEnumerable {
+        return Linq::select($this, $selector, $keySelector, $T, $TKey);
     }
 
     public function sequenceEqual(iterable $other, ?IEqualityComparer $equalityComparer = null): bool {
         return Linq::sequenceEqual($this, $other, $equalityComparer);
     }
 
-    public function single(?Closure $predicate = null, ?ITypeHint $T = null) {
-        return Linq::single($this, $predicate, $T);
+    public function single(?Closure $predicate = null) {
+        return Linq::single($this, $predicate);
     }
 
-    public function singleOrDefault(?Closure $predicate = null, ?ITypeHint $T = null) {
-        return Linq::singleOrDefault($this, $predicate, $T);
+    public function singleOrDefault(?Closure $predicate = null) {
+        return Linq::singleOrDefault($this, $predicate);
     }
 
     public function skip(int $count): IEnumerable {

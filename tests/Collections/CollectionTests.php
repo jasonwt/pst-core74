@@ -36,7 +36,7 @@ Should::executeTests(function() {
         }
     })();
 
-    $collection = new Collection($generator, TypeUnion::new(Type::int(), Type::string()));
+    $collection = new Collection($generator, TypeUnion::create(Type::int(), Type::string()));
 
     // print_r($collection);
     // $collection->offsetExists(2);

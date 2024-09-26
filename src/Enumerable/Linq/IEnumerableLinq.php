@@ -20,16 +20,20 @@ interface IEnumerableLinq {
     public function count(?Closure $predicate = null): int;
     public function contains($value): bool;
     public function containsKey($key): bool;
-    public function first(?Closure $predicate = null, ?ITypeHint $T = null);
-    public function firstOrDefault(?Closure $predicate = null, ?ITypeHint $T = null);
+    public function first(?Closure $predicate = null);
+    public function firstKey(?Closure $predicate = null);
+    public function firstOrDefault(?Closure $predicate = null);
+    public function firstKeyOrDefault(?Closure $predicate = null);
     public function iterationCount(Closure $predicate): int;
     public function keys(?Closure $predicate = null): IEnumerable;
-    public function last(?Closure $predicate = null, ?ITypeHint $T = null);
-    public function lastOrDefault(?Closure $predicate = null, ?ITypeHint $T = null);
-    public function select(?Closure $selector, ?Closure $keySelector = null, ?ITypeHint $T = null): IEnumerable;
+    public function last(?Closure $predicate = null);
+    public function lastKey(?Closure $predicate = null);
+    public function lastOrDefault(?Closure $predicate = null);
+    public function lastKeyOrDefault(?Closure $predicate = null);
+    public function select(?Closure $selector, ?Closure $keySelector = null, ?ITypeHint $T = null, ?ITypeHint $TKey = null): IEnumerable;
     public function sequenceEqual(iterable $other, ?IEqualityComparer $equalityComparer = null): bool;
-    public function single(Closure $predicate, ?ITypeHint $T = null); // not implemented
-    public function singleOrDefault(?Closure $predicate = null, ?ITypeHint $T = null); // not implemented
+    public function single(Closure $predicate); // not implemented
+    public function singleOrDefault(?Closure $predicate = null); // not implemented
     public function skip(int $count): IEnumerable;
     public function skipWhile(Closure $predicate): IEnumerable;
     public function toArray(): array;

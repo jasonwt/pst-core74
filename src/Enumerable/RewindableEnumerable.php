@@ -9,9 +9,11 @@ use Pst\Core\Types\Type;
 use Pst\Core\Types\ITypeHint;
 use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Enumerable\Linq\EnumerableLinqTrait;
+use Pst\Core\Enumerable\Iterators\RewindableIterator;
 
 use Iterator;
 use ArrayIterator;
+use CachingIterator;
 use IteratorAggregate;
 
 use TypeError;
@@ -46,6 +48,19 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
             while ($iterator instanceof IteratorAggregate) {
                 $iterator = $iterator->getIterator();
             }
+
+            // there are more then this.  BUG, TODO, FIX
+            $isRewindable = 
+                $iterator instanceof ArrayIterator ||
+                $iterator instanceof CachingIterator ||
+                $iterator instanceof IRewindableIterator ||
+                $iterator instanceof IRewindableEnumerable;
+
+            if (!$isRewindable) {
+                $iterator = new RewindableIterator($iterator);
+            }
+
+            $this->iterator = $iterator;
         }
 
         $this->T = $T ?? TypeHintFactory::undefined();
@@ -54,8 +69,6 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
         if (!$this->TKey->isAssignableTo(TypeHintFactory::keyTypes())) {
             throw new TypeError("{$this->TKey} is not assignable to key types");
         }
-
-        $this->iterator = $iterator;
     }
 
     /**
@@ -74,6 +87,24 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
      */
     public function TKey(): ITypeHint {
         return $this->TKey;
+    }
+
+    /**
+     * Determines if the enumerable is rewindable
+     * 
+     * @return bool 
+     */
+    public function isRewindable(): bool {
+        return true;
+    }
+
+    /**
+     * Rewinds the iterator
+     * 
+     * @return void 
+     */
+    public function rewind(): void {
+        $this->iterator->rewind();
     }
     
     /**
@@ -98,8 +129,8 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
      * 
      * @return IEnumerable 
      */
-    public static function create(iterable $iterable, ?ITypeHint $T = null, ?ITypeHint $TKey = null): IRewindableEnumerable {
-        if (!is_array($iterable) && $iterable instanceof IRewindableEnumerable) {
+    public static function create(iterable $iterable, ?ITypeHint $T = null, ?ITypeHint $TKey = null): IEnumerable {
+        if (!is_array($iterable) && $iterable instanceof IEnumerable) {
             $iterableT = $iterable->T();
             $iterableTKey = $iterable->TKey();
 
@@ -115,7 +146,7 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
                 throw new TypeError("{$TKey} is not assignable to {$iterableTKey}");
             }
             
-            if ($iterable instanceof RewindableEnumerable) {    
+            if ($iterable instanceof RewindableIterator) {    
                 return $iterable;
             }
         }
@@ -127,7 +158,7 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
             if ($T->isInt()) {
                 return new class($iterable, $T, $TKey) extends RewindableEnumerable implements IIntegerEnumerable, IRewindableEnumerable {};
             } else if ($T->isFloat()) {
-                return new class($iterable, $T, $TKey) extends RewindableEnumerable implements INumericEnumerable, IRewindableEnumerable {};
+                return new class($iterable, $T, $TKey) extends RewindableEnumerable implements IFloatEnumerable, IRewindableEnumerable {};
             } else if ($T->isString()) {
                 return new class($iterable, $T, $TKey) extends RewindableEnumerable implements IStringEnumerable, IRewindableEnumerable {};
             } else if ($T->isBool()) {

@@ -13,16 +13,22 @@ use Pst\Core\Enumerable\Linq\EnumerableLinqTrait;
 use Iterator;
 use Generator;
 use ArrayIterator;
+use CachingIterator;
 use IteratorAggregate;
 
 use TypeError;
 use InvalidArgumentException;
+use NoRewindIterator;
+use Pst\Core\Enumerable\Iterators\IRewindableIterator;
+use Pst\Core\Types\TypeUnion;
+use RecursiveIterator;
 
 class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
     use EnumerableLinqTrait {}
 
     private ITypeHint $T;
     private ITypeHint $TKey;
+    private bool $isRewindable = false;
     private Iterator $iterator;
 
     /**
@@ -46,7 +52,16 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
             while ($iterator instanceof IteratorAggregate) {
                 $iterator = $iterator->getIterator();
             }
+
+            $this->iterator = $iterator;
         }
+
+        // there are more then this.  BUG, TODO, FIX
+        $this->isRewindable = 
+            $this->iterator instanceof ArrayIterator ||
+            $this->iterator instanceof CachingIterator ||
+            $this->iterator instanceof IRewindableIterator ||
+            $this->iterator instanceof IRewindableEnumerable;
 
         $this->T = $T ?? TypeHintFactory::undefined();
         $this->TKey = $TKey ?? TypeHintFactory::keyTypes();
@@ -54,8 +69,6 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
         if (!$this->TKey->isAssignableTo(TypeHintFactory::keyTypes())) {
             throw new TypeError("{$this->TKey} is not assignable to key types");
         }
-
-        $this->iterator = $iterator;
     }
 
     /**
@@ -75,6 +88,15 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
     public function TKey(): ITypeHint {
         return $this->TKey;
     }
+
+    /**
+     * Determines if the enumerable is rewindable
+     * 
+     * @return bool 
+     */
+    public function isRewindable(): bool {
+        return $this->isRewindable;
+    }
     
     /**
      * Gets the iterator
@@ -85,6 +107,31 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
      */
     public function getIterator(): Iterator {
         return $this->iterator;
+    }
+
+    ////////////////////////////////////////////// PUBLIC STATIC METHODS \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+    /**
+     * Determines the type hint of the values in an iterable
+     * 
+     * @param iterable $iterable 
+     * 
+     * @return ITypeHint 
+     */
+    public static function determineTypeHint(iterable $iterable): ITypeHint {
+        $types = [];
+
+        foreach ($iterable as $value) {
+            $type = Type::typeOf($value);
+
+            $types[$type->fullName()] ??= $type;
+        }
+
+        if (count($types) === 1) {
+            return $types[array_key_first($types)];
+        }
+
+        return TypeUnion::create(...array_values($types));
     }
 
     ////////////////////////////////////////////// PUBLIC FACTORY METHODS \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -125,13 +172,13 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
 
         if ($T instanceof Type) {
             if ($T->isInt()) {
-                return new class($iterable, $T, $TKey) extends Enumerator implements IIntegerEnumerable {};
+                return new class($iterable, $T, $TKey) extends Enumerable implements IIntegerEnumerable {};
             } else if ($T->isFloat()) {
-                return new class($iterable, $T, $TKey) extends Enumerator implements INumericEnumerable {};
+                return new class($iterable, $T, $TKey) extends Enumerable implements IFloatEnumerable {};
             } else if ($T->isString()) {
-                return new class($iterable, $T, $TKey) extends Enumerator implements IStringEnumerable {};
+                return new class($iterable, $T, $TKey) extends Enumerable implements IStringEnumerable {};
             } else if ($T->isBool()) {
-                return new class($iterable, $T, $TKey) extends Enumerator implements IBooleanEnumerable {};
+                return new class($iterable, $T, $TKey) extends Enumerable implements IBooleanEnumerable {};
             }
         }
 
@@ -159,15 +206,14 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
      * @return INumericEnumerable 
      */
     public static function range($start, int $count, $step = 1): INumericEnumerable {
-        if (!is_numeric($start) || !is_numeric($step)) {
-            throw new InvalidArgumentException("Start and step must be numeric");
+        if (!is_int($start) && !is_float($start)) {
+            throw new InvalidArgumentException("Start must be an integer or float");
+        } else if (!is_int($step) && !is_float($step)) {
+            throw new InvalidArgumentException("Step must be an integer or float");
         } else if ($count < 0) {
             throw new InvalidArgumentException("Count must be greater than or equal to zero");
         }
-
-        $start = (strpos((string) $start, ".") !== false) ? (float) $start : (int) $start;
-        $step = (strpos((string) $step, ".") !== false) ? (float) $step : (int) $step;
-
+        
         $rangeGenerator = (function() use ($start, $count, $step): Generator {
             for ($i = 0; $i < $count; $i ++) {
                 yield $start + $i * $step;
@@ -175,10 +221,10 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
         })();
 
         if (is_float($start) || is_float($step)) {
-            return new class($rangeGenerator, Type::float()) extends Enumerator implements IFloatEnumerable {};
+            return new class($rangeGenerator, Type::float()) extends Enumerable implements IFloatEnumerable {};
         }
 
-        return new class($rangeGenerator, Type::int()) extends Enumerator implements IIntegerEnumerable {};
+        return new class($rangeGenerator, Type::int()) extends Enumerable implements IIntegerEnumerable {};
     }
 
     /**
@@ -200,13 +246,13 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
 
         if ($T instanceof Type) {
             if ($T->isInt()) {
-                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerator implements IIntegerEnumerable {};
+                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerable implements IIntegerEnumerable {};
             } else if ($T->isFloat()) {
-                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerator implements INumericEnumerable {};
+                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerable implements IFloatEnumerable {};
             } else if ($T->isString()) {
-                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerator implements IStringEnumerable {};
+                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerable implements IStringEnumerable {};
             } else if ($T->isBool()) {
-                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerator implements IBooleanEnumerable {};
+                return new class($repeatGenerator, $T, TypeHintFactory::keyTypes()) extends Enumerable implements IBooleanEnumerable {};
             }
         }
 
@@ -223,28 +269,34 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
      * 
      * @return INumericEnumerable 
      */
-    public static function linspace($start, $stop, int $num = 50, bool $endpoint = true): INumericEnumerable {
-        if (!is_numeric($start) || !is_numeric($stop)) {
-            throw new InvalidArgumentException("Start and stop must be numeric");
-        } else if ($num < 0) {
-            throw new InvalidArgumentException("Count must be greater than or equal to zero");
+    public static function linspace($start, $stop, int $num, bool $endpoint = true): INumericEnumerable {
+        if (!is_int($start) && !is_float($start)) {
+            throw new InvalidArgumentException("Start must be an integer or float");
+        } else if (!is_int($stop) && !is_float($stop)) {
+            throw new InvalidArgumentException("Stop must be an integer or float");
+        } else if ($num <= 1) {
+            throw new InvalidArgumentException("num must be greater than one");
         }
 
-        $start = (strpos((string) $start, ".") !== false) ? (float) $start : (int) $start;
-        $stop = (strpos((string) $stop, ".") !== false) ? (float) $stop : (int) $stop;
+        if ($start === $stop && $num) {
+            throw new InvalidArgumentException("Start and stop must be different");
+        }
 
-        $linspaceGenerator = (function() use ($start, $stop, $num, $endpoint): Generator {
-            $step = ($stop - $start) / ($num - ($endpoint ? 1 : 0));
+        $direction = ($start < $stop) ? 1 : -1;
+        $absStartMinusStop = abs($start - $stop);
+
+        $linspaceGenerator = (function() use ($start, $stop, $num, $direction, $endpoint): Generator {
+            $step = (($stop - $start) / ($num - ($endpoint ? 1 : 0))) * $direction;
 
             for ($i = 0; $i < $num; $i ++) {
                 yield $start + $i * $step;
             }
         })();
 
-        if (is_float($start) || is_float($stop)) {
-            return new class($linspaceGenerator, Type::float()) extends Enumerator implements IFloatEnumerable {};
+        if (is_float($start) || is_float($stop) || $absStartMinusStop < ($num - ($endpoint ? 1 : 0))) {
+            return new class($linspaceGenerator, Type::float()) extends Enumerable implements IFloatEnumerable {};
         }
 
-        return new class($linspaceGenerator, Type::int()) extends Enumerator implements IIntegerEnumerable {};
+        return new class($linspaceGenerator, Type::int()) extends Enumerable implements IIntegerEnumerable {};
     }
 }

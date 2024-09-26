@@ -10,7 +10,6 @@ use Pst\Core\EqualityComparer;
 use Pst\Core\Types\Type;
 use Pst\Core\Types\ITypeHint;
 use Pst\Core\Types\TypeHintFactory;
-use Pst\Core\Enumerable\Enumerator;
 use Pst\Core\Enumerable\IEnumerable;
 use Pst\Core\Enumerable\IRewindableEnumerable;
 use Pst\Core\Enumerable\RewindableEnumerable;
@@ -27,6 +26,7 @@ use Closure;
 use Generator;
 
 use InvalidArgumentException;
+use Pst\Core\Enumerable\Enumerable;
 
 class Linq {
     // Pure static class
@@ -41,9 +41,9 @@ class Linq {
      * @return bool 
      */
     public static function all(iterable $source, Closure $predicate): bool {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
         foreach ($source as $key => $value) {
             if (!$predicateFunc($value, $key)) {
@@ -63,9 +63,9 @@ class Linq {
      * @return bool 
      */
     public static function any(iterable $source, Closure $predicate): bool {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
         
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
         foreach ($source as $key => $value) {
             if ($predicateFunc($value, $key)) {
@@ -86,7 +86,7 @@ class Linq {
      * @return bool 
      */
     public static function contains(iterable $source, $value, ?IEqualityComparer $equalityComparer = null): bool {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         $equalityComparer ??= EqualityComparer::default($source->T());
 
@@ -108,7 +108,7 @@ class Linq {
      * @return bool 
      */
     public static function containsKey(iterable $source, $key): bool {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         foreach ($source as $sourceKey => $_) {
             if ($sourceKey === $key) {
@@ -128,13 +128,13 @@ class Linq {
      * @return int
      */
     public static function count(iterable $source, ?Closure $predicate = null): int {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         if ($predicate === null) {
             return iterator_count($source);
         }
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
         $count = 0;
 
@@ -158,17 +158,41 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function first(iterable $source, ?Closure $predicate = null) {
-        $source = Enumerator::create($source);
-
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         $predicate = $predicate !== null ? 
-            Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool()) :
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
             null;
 
         foreach ($source as $key => $value) {
             if ($predicate === null || $predicate($value, $key)) {
                 return $value;
+            }
+        }
+
+        throw new InvalidOperationException("Sequence contains no elements that satisfy the predicate");
+    }
+
+    /**
+     * Returns the first key of a sequence matching the optional predicate
+     * 
+     * @param iterable $source 
+     * @param null|Closure $predicate 
+     * 
+     * @return mixed 
+     * 
+     * @throws InvalidArgumentException 
+     */
+    public static function firstKey(iterable $source, ?Closure $predicate = null) {
+        $source = Enumerable::create($source);
+
+        $predicate = $predicate !== null ? 
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
+            null;
+
+        foreach ($source as $key => $value) {
+            if ($predicate === null || $predicate($value, $key)) {
+                return $key;
             }
         }
 
@@ -186,15 +210,41 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function firstOrDefault(iterable $source, ?Closure $predicate = null) {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         $predicate = $predicate !== null ? 
-            Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool()) :
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
             null;
 
         foreach ($source as $key => $value) {
             if ($predicate === null || $predicate($value, $key)) {
                 return $value;
+            }
+        }
+
+        return $source->T()->defaultValue();
+    }
+
+    /**
+     * Returns the first key of a sequence matching the optional predicate, or a default value if the sequence contains no elements
+     * 
+     * @param iterable $source 
+     * @param null|Closure $predicate 
+     * 
+     * @return mixed 
+     * 
+     * @throws InvalidArgumentException 
+     */
+    public static function firstKeyOrDefault(iterable $source, ?Closure $predicate = null) {
+        $source = Enumerable::create($source);
+
+        $predicate = $predicate !== null ? 
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
+            null;
+
+        foreach ($source as $key => $value) {
+            if ($predicate === null || $predicate($value, $key)) {
+                return $key;
             }
         }
 
@@ -212,9 +262,9 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function iterationCount(iterable $source, Closure $predicate): int {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
         $count = 0;
 
@@ -240,19 +290,19 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function keys(iterable $source, ?Closure $predicate = null): IEnumerable {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         if ($predicate === null) {
-            return Enumerator::create((function() use ($source): Generator {
+            return Enumerable::create((function() use ($source): Generator {
                 foreach ($source as $key => $_) {
                     yield $key;
                 }
             })(), TypeHintFactory::keyTypes());
         }
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
-        return Enumerator::create((function() use ($source, $predicateFunc): Generator {
+        return Enumerable::create((function() use ($source, $predicateFunc): Generator {
             foreach ($source as $key => $value) {
                 if ($predicateFunc($value, $key)) {
                     yield $key;
@@ -273,10 +323,10 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function last(iterable $source, ?Closure $predicate = null) {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         $predicate = $predicate !== null ? 
-            Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool()) :
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
             null;
 
         $last = null;
@@ -297,6 +347,41 @@ class Linq {
     }
 
     /**
+     * Returns the last key of a sequence
+     * 
+     * @param iterable $source 
+     * @param null|Closure $predicate 
+     * 
+     * @return mixed 
+     * 
+     * @throws InvalidOperationException 
+     * @throws InvalidArgumentException 
+     */
+    public static function lastKey(iterable $source, ?Closure $predicate = null) {
+        $source = Enumerable::create($source);
+
+        $predicate = $predicate !== null ? 
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
+            null;
+
+        $lastKey = null;
+        $found = false;
+
+        foreach ($source as $key => $value) {
+            if ($predicate === null || $predicate($value, $key)) {
+                $lastKey = $key;
+                $found = true;
+            }
+        }
+
+        if (!$found) {
+            throw new InvalidOperationException("Sequence contains no elements");
+        }
+
+        return $lastKey;
+    }
+
+    /**
      * Returns the last element of a sequence, or a default value if the sequence contains no elements
      * 
      * @param iterable $source 
@@ -307,10 +392,10 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function lastOrDefault(iterable $source, ?Closure $predicate = null) {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         $predicate = $predicate !== null ? 
-            Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool()) :
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
             null;
 
         $last = null;
@@ -324,6 +409,36 @@ class Linq {
         }
 
         return $found ? $last : $source->T()->defaultValue();
+    }
+
+    /**
+     * Returns the last key of a sequence, or a default value if the sequence contains no elements
+     * 
+     * @param iterable $source 
+     * @param null|Closure $predicate 
+     * 
+     * @return mixed 
+     * 
+     * @throws InvalidArgumentException 
+     */
+    public static function lastKeyOrDefault(iterable $source, ?Closure $predicate = null) {
+        $source = Enumerable::create($source);
+
+        $predicate = $predicate !== null ? 
+            Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool()) :
+            null;
+
+        $lastKey = null;
+        $found = false;
+
+        foreach ($source as $key => $value) {
+            if ($predicate === null || $predicate($value, $key)) {
+                $lastKey = $key;
+                $found = true;
+            }
+        }
+
+        return $found ? $lastKey : $source->T()->defaultValue();
     }
 
     /**
@@ -351,13 +466,13 @@ class Linq {
             throw new InvalidArgumentException("at least one of selector or keySelector must be provided");
         }
 
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         $generator = null;
 
         if ($selector === null) {
             $TResult ??= TypeHintFactory::keyTypes(true);
-            $keySelectorFunc = Func::new($keySelector, $source->T(), TypeHintFactory::tryParse("int|string|void"), $TResult);
+            $keySelectorFunc = Func::new($keySelector, $source->T(), TypeHintFactory::optional($source->TKey()), $TResult);
 
             $generator = (function() use ($source, $keySelectorFunc): Generator {
                 foreach ($source as $key => $value) {
@@ -367,7 +482,7 @@ class Linq {
             
         } else if ($keySelector === null) {
             $TResult ??= TypeHintFactory::undefined();
-            $selectorFunc = Func::new($selector, $source->T(), TypeHintFactory::tryParse("int|string|void"), $TResult);
+            $selectorFunc = Func::new($selector, $source->T(), TypeHintFactory::optional($source->TKey()), $TResult);
 
             $generator = (function() use ($source, $selectorFunc): Generator {
                 foreach ($source as $key => $value) {
@@ -377,8 +492,8 @@ class Linq {
         } else {
             $TResult ??= TypeHintFactory::undefined();
 
-            $selectorFunc = Func::new($selector, $source->T(), TypeHintFactory::tryParse("int|string|void"), $TResult);
-            $keySelectorFunc = Func::new($keySelector, $source->T(), TypeHintFactory::tryParse("int|string|void"), TypeHintFactory::keyTypes(true));
+            $selectorFunc = Func::new($selector, $source->T(), TypeHintFactory::optional($source->TKey()), $TResult);
+            $keySelectorFunc = Func::new($keySelector, $source->T(), TypeHintFactory::optional($source->TKey()), TypeHintFactory::keyTypes(true));
 
             $generator = (function() use ($source, $selectorFunc, $keySelectorFunc): Generator {
                 foreach ($source as $key => $value) {
@@ -387,7 +502,7 @@ class Linq {
             })();
         }
 
-        return Enumerator::create($generator, $TResult);
+        return Enumerable::create($generator, $TResult);
     }
 
     /**
@@ -402,8 +517,8 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function sequenceEqual(iterable $source, iterable $iterable, ?IEqualityComparer $equalityComparer = null): bool {
-        $source = Enumerator::create($source);
-        $iterable = Enumerator::create($iterable);
+        $source = Enumerable::create($source);
+        $iterable = Enumerable::create($iterable);
 
         $sourceType = $source->T();
         $iterableType = $iterable->T();
@@ -438,7 +553,7 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function single(iterable $source, Closure $predicate, ?ITypeHint $T = null) {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         throw new NotImplementedException();
     }
@@ -456,7 +571,7 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function singleOrDefault(iterable $source, ?Closure $predicate = null, ?ITypeHint $T = null) {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         throw new NotImplementedException();
     }
@@ -472,13 +587,13 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function skip(iterable $source, int $count): IEnumerable {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         if ($count < 0) {
             throw new InvalidArgumentException("Count must be greater than or equal to zero");
         }
 
-        return Enumerator::create((function() use ($source, $count): Generator {
+        return Enumerable::create((function() use ($source, $count): Generator {
             $i = 0;
 
             foreach ($source as $key => $value) {
@@ -502,11 +617,11 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function skipWhile(iterable $source, Closure $predicate) {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
-        return Enumerator::create((function() use ($source, $predicateFunc): Generator {
+        return Enumerable::create((function() use ($source, $predicateFunc): Generator {
             $skipping = true;
 
             foreach ($source as $key => $value) {
@@ -532,13 +647,13 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function take(iterable $source, int $count): IEnumerable {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         if ($count < 0) {
             throw new InvalidArgumentException("Count must be greater than or equal to zero");
         }
 
-        return Enumerator::create((function() use ($source, $count): Generator {
+        return Enumerable::create((function() use ($source, $count): Generator {
             $i = 0;
 
             foreach ($source as $key => $value) {
@@ -563,11 +678,11 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function takeWhile(iterable $source, Closure $predicate): IEnumerable {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
-        return Enumerator::create((function() use ($source, $predicateFunc): Generator {
+        return Enumerable::create((function() use ($source, $predicateFunc): Generator {
             foreach ($source as $key => $value) {
                 if (!$predicateFunc($value, $key)) {
                     break;
@@ -586,7 +701,7 @@ class Linq {
      * @return array 
      */
     public static function toArray(iterable $source): array {
-        return iterator_to_array(Enumerator::create($source));
+        return iterator_to_array(Enumerable::create($source));
     }
 
     /**
@@ -633,11 +748,11 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function where(iterable $source, Closure $predicate): IEnumerable {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
-        return Enumerator::create((function() use ($source, $predicateFunc): Generator {
+        return Enumerable::create((function() use ($source, $predicateFunc): Generator {
             foreach ($source as $key => $value) {
                 if ($predicateFunc($value, $key)) {
                     yield $key => $value;
@@ -657,19 +772,19 @@ class Linq {
      * @throws InvalidArgumentException 
      */
     public static function values(iterable $source, ?Closure $predicate = null): IEnumerable {
-        $source = Enumerator::create($source);
+        $source = Enumerable::create($source);
 
         if ($predicate === null) {
-            return Enumerator::create((function() use ($source): Generator {
+            return Enumerable::create((function() use ($source): Generator {
                 foreach ($source as $key => $value) {
                     yield $value;
                 }
             })(), $source->T());
         }
 
-        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::tryParse("int|string|void"), Type::bool());
+        $predicateFunc = Func::new($predicate, $source->T(), TypeHintFactory::optional($source->TKey()), Type::bool());
 
-        return Enumerator::create((function() use ($source, $predicateFunc): Generator {
+        return Enumerable::create((function() use ($source, $predicateFunc): Generator {
             foreach ($source as $key => $value) {
                 if ($predicateFunc($value, $key)) {
                     yield $value;
@@ -733,7 +848,7 @@ class Linq {
 //             throw new InvalidArgumentException("keyValue must be of type null, int or string");
 //         }
 
-//         return Enumerator::create((function() use ($element, $keyValue): Generator {
+//         return Enumerable::create((function() use ($element, $keyValue): Generator {
 //             foreach ($source as $key => $value) {
 //                 yield $key => $value;
 //             }
@@ -756,9 +871,9 @@ class Linq {
 //      * @throws InvalidArgumentException 
 //      */
 //     public function concat(iterable $iterable, ?Closure $iterableKeySelector = null): IImmutableEnumerable {
-//         $iterable = Enumerator::create($iterable, $source->T());
+//         $iterable = Enumerable::create($iterable, $source->T());
 
-//         return Enumerator::create((function() use ($iterable, $iterableKeySelector): Generator {
+//         return Enumerable::create((function() use ($iterable, $iterableKeySelector): Generator {
 //             foreach ($source as $key => $value) {
 //                 yield $key => $value;
 //             }
@@ -768,7 +883,7 @@ class Linq {
 //                     yield $key => $value;
 //                 }
 //             } else {
-//                 $iterableKeySelector = Func::new($iterableKeySelector, $iterable->T(), TypeHintFactory::tryParse("int|string|void"), TypeHintFactory::keyTypes(true));
+//                 $iterableKeySelector = Func::new($iterableKeySelector, $iterable->T(), TypeHintFactory::optional($source->TKey()), TypeHintFactory::keyTypes(true));
 
 //                 foreach ($iterable as $key => $value) {
 //                     $key = $iterableKeySelector($value, $key);
@@ -840,9 +955,9 @@ class Linq {
 //         //     throw new InvalidArgumentException("TResult cannot be void");
 //         // }
 
-//         // $selectorFunc = Func::new($selector, $source->T(), TypeHintFactory::tryParse("int|string|void"), $TResult);
+//         // $selectorFunc = Func::new($selector, $source->T(), TypeHintFactory::optional($source->TKey()), $TResult);
 
-//         // return Enumerator::create((function() use ($selectorFunc): Generator {
+//         // return Enumerable::create((function() use ($selectorFunc): Generator {
 //         //     foreach ($source as $key => $value) {
 //         //         $enumerable = $selectorFunc($value, $key);
 
@@ -915,7 +1030,7 @@ class Linq {
 //      */
 //     public function swapKeysAndValues(?Closure $predicate = null): IImmutableEnumerable {
 //         if ($predicate === null) {
-//             return Enumerator::create((function(): Generator {
+//             return Enumerable::create((function(): Generator {
 //                 foreach ($source as $key => $value) {
 //                     if (!is_string($value) && !is_int($value)) {
 //                         throw new InvalidArgumentException("Value must be a string or integer");
@@ -928,7 +1043,7 @@ class Linq {
 
 //         $predicate = Func::new($predicate, $source->T(), TypeHintFactory::keyTypes(), TypeHintFactory::bool());
 
-//         return Enumerator::create((function() use ($predicate): Generator {
+//         return Enumerable::create((function() use ($predicate): Generator {
 //             foreach ($source as $key => $value) {
 //                 if ($predicate($value, $key)) {
 //                     if (!is_string($value) && !is_int($value)) {
@@ -971,7 +1086,7 @@ class Linq {
 //             return $array;
 //         }
 
-//         $keySelector = Func::new($keySelector, $source->T(), TypeHintFactory::tryParse("int|string|void"), TypeHintFactory::keyTypes(true));
+//         $keySelector = Func::new($keySelector, $source->T(), TypeHintFactory::optional($source->TKey()), TypeHintFactory::keyTypes(true));
 
 //         foreach ($source as $key => $value) {
 //             $key = $keySelector($value, $key);

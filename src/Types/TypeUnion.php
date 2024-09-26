@@ -154,7 +154,7 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
         return $this->fullName;
     }
     /**
-     * Creates a new TypeUnion instance
+     * Creates a create TypeUnion instance
      * 
      * @param string|ITypeHint ...$types 
      * 
@@ -162,7 +162,7 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
      * 
      * @throws InvalidArgumentException
      */
-    public static function new(... $types): TypeUnion {
+    public static function create(... $types): TypeUnion {
         $types = array_reduce($types, function ($acc, $type) {
             if (is_string($type)) {
                 if (empty($type = trim($type))) {
