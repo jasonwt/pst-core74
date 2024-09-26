@@ -6,13 +6,13 @@ declare(strict_types=1);
 namespace Pst\Core\Enumerable\Linq;
 
 use Pst\Core\Types\ITypeHint;
+use Pst\Core\Interfaces\IEqualityComparer;
 use Pst\Core\Enumerable\IEnumerable;
-
-use Closure;
+use Pst\Core\Enumerable\IRewindableEnumerable;
 use Pst\Core\Collections\ICollection;
 use Pst\Core\Collections\IReadonlyCollection;
-use Pst\Core\Enumerable\IRewindableEnumerable;
-use Pst\Core\Interfaces\IEqualityComparer;
+
+use Closure;
 
 interface IEnumerableLinq {
     public function all(Closure $predicate): bool;

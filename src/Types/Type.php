@@ -347,6 +347,35 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
     }
 
     /**
+     * Tries to get the type of the provided value
+     * 
+     * @param string|ITypeHint $typeNameOrITypeHint 
+     * @param Type|null $output 
+     * 
+     * @return bool 
+     * 
+     * @throws InvalidArgumentException 
+     */
+    public static function tryGetType($typeNameOrITypeHint, ?Type &$output): bool {
+        $output = null;
+
+        if ($typeNameOrITypeHint instanceof Type) {
+            $output = $typeNameOrITypeHint;
+            return true;
+
+        } else if ($typeNameOrITypeHint instanceof ITypeHint) {
+            return false;
+
+        } else if (!is_string($typeNameOrITypeHint)) {
+            throw new InvalidArgumentException("typeNameOrITypeHint must be a string or an instance of ITypeHint");
+        }
+
+        $output = self::tryParse($typeNameOrITypeHint);
+
+        return $output !== null;
+    }
+
+    /**
      * Tries to parse a string into a Type instance
      * 
      * @param string $input 

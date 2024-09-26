@@ -9,13 +9,13 @@ use Pst\Core\Enumerable\IRewindableEnumerable;
 
 use Closure;
 use ArrayAccess;
+use Countable;
 
 interface ICollection extends IRewindableEnumerable, ArrayAccess  {
     // readonly methods
     public function count(?Closure $predicate = null): int;
     public function contains($item): bool;
     public function containsKey($key): bool;
-    public function indexOf($item): int;
 
     // mutable methods
     public function tryAdd($item, $key = null): bool;

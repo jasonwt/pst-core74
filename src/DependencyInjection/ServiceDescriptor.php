@@ -171,4 +171,8 @@ class ServiceDescriptor extends CoreObject implements ICoreObject {
     public function getImplementation(): object {
         return $this->implementation;
     }
+
+    public function __toString(): string {
+        return $this->lifetime . " " . $this->serviceType . " " . $this->implementation;
+    }
 }

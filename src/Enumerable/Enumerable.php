@@ -111,6 +111,13 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
 
     ////////////////////////////////////////////// PUBLIC STATIC METHODS \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+    public static function isIterableRewindable(iterable $iterable): bool {
+        return 
+            $iterable instanceof ArrayIterator ||
+            $iterable instanceof CachingIterator ||
+            $iterable instanceof IRewindableIterator ||
+            $iterable instanceof IRewindableEnumerable;
+    }
     /**
      * Determines the type hint of the values in an iterable
      * 

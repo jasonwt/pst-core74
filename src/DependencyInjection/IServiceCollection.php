@@ -5,13 +5,15 @@ declare(strict_types=1);
 
 namespace Pst\Core\DependencyInjection;
 
+use Countable;
 use Pst\Core\Types\Type;
 use Pst\Core\Enumerable\IEnumerable;
+use Pst\Core\Enumerable\IRewindableEnumerable;
 
 /**
  * Represents a collection of services.
  */
-interface IServiceCollection extends IEnumerable {
+interface IServiceCollection extends IRewindableEnumerable, Countable {
     public function createServiceProvider(): IServiceProvider;
 
     /**
@@ -23,4 +25,5 @@ interface IServiceCollection extends IEnumerable {
      */
     public function exists($typeOrKey): bool;
     public function add(ServiceDescriptor $serviceDescriptor, ?string $key = null): void;
+    public function tryAdd(ServiceDescriptor $serviceDescriptor, ?string $key = null): bool;
 }

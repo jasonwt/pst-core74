@@ -5,9 +5,13 @@ declare(strict_types=1);
 
 namespace Pst\Core\DependencyInjection;
 
+use Closure;
 use Pst\Core\Func;
 use Pst\Core\CoreObject;
 use Pst\Core\Types\Type;
+use Pst\Core\Collections\CollectionTrait;
+use Pst\Core\Exceptions\NotImplementedException;
+
 use Pst\Core\Enumerable\IEnumerable;
 use Pst\Core\Enumerable\Enumerator;
 use Pst\Core\Enumerable\ImmutableEnumerableLinqTrait;
@@ -20,55 +24,35 @@ use Pst\Core\Enumerable\Linq\EnumerableLinqTrait;
 use Pst\Core\Exceptions\ContainerException;
 use Pst\Core\Exceptions\DependencyNotFoundException;
 
-use Closure;
-use Traversable;
-use ArrayIterator;
-use Iterator;
+
+
+
 use IteratorAggregate;
-use ReflectionClass;
 
-class ServiceCollection extends CoreObject implements Iterator, IServiceCollection {
-    use EnumerableLinqTrait {
+class ServiceCollection extends CoreObject implements IteratorAggregate, IServiceCollection {
+    use CollectionTrait {
+        //contains as private;
+        //containsKey as private;
+        tryAdd as private;
+        add as private;
+        clear as private;
+        remove as private;
 
+        __construct as private collectionTraitConstruct;
     }
 
-    private array $services = [];
-    private ICollection $serviceCollection;
-
-    /**
-     * Initializes a new instance of ServiceCollection.
-     * 
-     * @param IEnumerable|array $services The services to add to the collection.
-     */
     public function __construct(iterable $services = []) {
-        $this->serviceCollection = Collection::create($services, Type::typeOf(ServiceDescriptor::class));
+        $this->collectionTraitConstruct($services, Type::class(ServiceDescriptor::class), Type::string());
 
-        foreach (Enumerator::create($services) as $alias => $service) {
-            if (!is_string($alias) || is_numeric($alias)) {
-                throw new ContainerException("Service alias must be a string.");
-            }
-
-            $this->serviceCollection->add($service, $alias);
+        foreach ($services as $alias => $service) {
+            $this->add($service, $alias);
         }
-    }
-
-    public function getIterator(): Traversable {
-        return $this->serviceCollection;
-    }
-
-    public function count(?Closure $predicate = null): int {
-        return $predicate === null ? count($this->services) : $this->linqCount($predicate);
-    }
-
-    
-    public function T(): Type {
-        return Type::typeOf(ServiceDescriptor::class);
     }
 
     /**
      * Determines whether a service with the specified key exists in the collection.
      * 
-     * @param string|Type $typeOrKey The key of the service.
+     * @param string|Type $key The key of the service.
      * 
      * @return bool True if the service exists; otherwise, false.
      */
@@ -79,20 +63,20 @@ class ServiceCollection extends CoreObject implements Iterator, IServiceCollecti
             throw new ContainerException("Type or key must be a string or Type.");
         }
 
-        return isset($this->services[$typeOrKey]);
+        return $this->containsKey($typeOrKey);
     }
 
     /**
-     * Adds a service to the collection.
+     * Tries to add a service to the collection.
      * 
-     * @param ServiceDescriptor $serviceDescriptor
-     * @param null|string $serviceKey
+     * @param ServiceDescriptor $serviceDescriptor The service descriptor to add.
+     * @param string|null $key The key of the service.
      * 
-     * @return void
+     * @return bool True if the service was added; otherwise, false.
      * 
      * @throws ContainerException
      */
-    public function add(ServiceDescriptor $serviceDescriptor, ?string $serviceKey = null): void {
+    public function tryAdd(ServiceDescriptor $serviceDescriptor, ?string $serviceKey = null): bool {
         $serviceKey ??= $serviceDescriptor->getServiceType()->fullName();
 
         if (is_numeric($serviceKey)) {
@@ -103,15 +87,35 @@ class ServiceCollection extends CoreObject implements Iterator, IServiceCollecti
 
         $serviceKey ??= $serviceType->fullName();
 
-        if (isset($this->services[$serviceKey])) {
-            throw new ContainerException("A service with the serviceKey '$serviceKey' already exists.");
+        if (isset($this->keyValues[$serviceKey])) {
+            return false;
         }
 
         if (!$serviceType->isInterface() && !$serviceType->isClass()) {
             throw new ContainerException("Service type must be an interface or a class.");
         }
 
-        $this->services[$serviceKey] = $serviceDescriptor;
+        $this->offsetSet($serviceKey, $serviceDescriptor);
+
+        return true;
+    }
+
+    /**
+     * Adds a service to the collection.
+     * 
+     * @param ServiceDescriptor $serviceDescriptor The service descriptor to add.
+     * @param string|null $key The key of the service.
+     * 
+     * @return void
+     * 
+     * @throws ContainerException
+     */
+    public function add(ServiceDescriptor $serviceDescriptor, ?string $serviceKey = null): void {
+        $serviceKey ??= $serviceDescriptor->getServiceType()->fullName();
+        
+        if (!$this->tryAdd($serviceDescriptor, $serviceKey)) {
+            throw new ContainerException("A service with the serviceKey '$serviceKey' already exists.");
+        }
     }
 
     /**
@@ -123,112 +127,7 @@ class ServiceCollection extends CoreObject implements Iterator, IServiceCollecti
      * @throws ContainerException
      */
     public function createServiceProvider(): IServiceProvider {
-        return new class($this->services) extends CoreObject implements IteratorAggregate, IServiceProvider {
-            use ImmutableEnumerableLinqTrait {
-                linqKeys as keys;
-                linqValues as values;
-            }
-
-            private array $services = [];
-
-            public function __construct(array $services) {
-                $this->services = $services;
-            }
-
-            public function getImmutableIterator(): Traversable {
-                return $this->getIterator();
-            }
-
-            public function getIterator(): Traversable {
-                return new ArrayIterator($this->services);
-            }
-
-            public function count(?Closure $predicate = null): int {
-                return $predicate === null ? count($this->services) : $this->linqCount($predicate);
-            }
-
-            public function T(): Type {
-                return Type::typeOf(ServiceDescriptor::class);
-            }
-
-            public function toServiceCollection(): IServiceCollection {
-                return new ServiceCollection($this->services);
-            }
-
-            public function getService(Type $serviceType): ?object {
-                return $this->getServiceByKey($serviceType->fullName());
-            }
-
-            public function getServiceByKey(string $serviceKey): ?object {
-                if (($service = ($this->services[$serviceKey] ?? null)) === null) {
-                    return null;
-                }
-
-                $serviceLifetime = $service->getLifetime();
-                $serviceType = $service->getServiceType();
-                $serviceImplementation = $service->getImplementation();
-
-                if ($serviceImplementation instanceof Func) {
-                    $classInstance = $serviceImplementation();
-                } else if (!$serviceImplementation instanceof Type) {
-                    return $serviceImplementation;
-                } else {
-                    $classReflection = new ReflectionClass($serviceImplementation->fullName());
-                    $classInstance = null;
-
-                    if (($classConstructor = $classReflection->getConstructor()) === null) {
-                        $classInstance = $classReflection->newInstance();
-                    } else if (empty($classConstructorParameters = $classConstructor->getParameters())) {
-                        $classInstance = $classReflection->newInstance();
-                    } else {
-                        $constructorArguments = array_reduce(range(0, count($classConstructorParameters) - 1), function($acc, $i) use ($classConstructorParameters): ?array {
-                            if ($acc === null) {
-                                return null;
-                            }
-
-                            $parameter = $classConstructorParameters[$i];
-                            $parameterType = $parameter->getType();
-                            $parameterTypeName = $parameterType->getName();
-
-                            if (($resolvedParameterValue = $this->getService(Type::typeOf($parameterTypeName))) !== null) {
-                                $acc[] = $resolvedParameterValue;
-                            } else if ($parameter->isDefaultValueAvailable()) {
-                                $acc[] = $parameter->getDefaultValue();
-                            } else {
-                                return null;
-                            }
-
-                            return $acc;
-                        }, []);
-
-                        if ($constructorArguments === null) {
-                            throw new DependencyNotFoundException("Cannot resolve constructor arguments for class '$serviceImplementation'.");
-                        }
-
-                        $classInstance = $classReflection->newInstanceArgs($constructorArguments);
-                    }
-                }
-
-                if ($serviceLifetime === ServiceLifetime::Singleton()) {
-                    $this->services[$serviceKey] = new ServiceDescriptor($serviceLifetime, $serviceType, $classInstance);
-                }
-
-                return $classInstance;
-            }
-        };
+        return ServiceProvider::create($this);
     }
-
-    public function toArray(): array {
-        return $this->serviceCollection->toArray();
-    }
-
-    public function toCollection(): ICollection {
-        return Collection::create($this->serviceCollection);
-    }
-
-    public function toReadonlyCollection(): IReadonlyCollection {
-        return ReadonlyCollection::create($this->serviceCollection);
-    }
-
     
 }

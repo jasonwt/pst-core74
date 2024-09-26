@@ -57,7 +57,7 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
                 $iterator instanceof IRewindableEnumerable;
 
             if (!$isRewindable) {
-                $iterator = new RewindableIterator($iterator);
+                $iterator = RewindableIterator::create($iterator);
             }
 
             $this->iterator = $iterator;

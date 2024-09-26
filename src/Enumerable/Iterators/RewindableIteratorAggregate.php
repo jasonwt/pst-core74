@@ -8,6 +8,10 @@ use Pst\Core\CoreObject;
 
 use IteratorAggregate;
 
-class RewindableIteratorAggregate extends CoreObject implements IRewindableIterator, IteratorAggregate {
+final class RewindableIteratorAggregate extends CoreObject implements IRewindableIterator, IteratorAggregate {
     use RewindableIteratorTrait;
+
+    public static function create(iterable $iterator, bool $rewindable = true): IRewindableIterator {
+        return new static($iterator, $rewindable);
+    }
 }

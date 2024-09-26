@@ -6,11 +6,6 @@ declare(strict_types=1);
 namespace Pst\Core\Collections;
 
 use Pst\Core\Types\Type;
-use Pst\Core\Types\ITypeHint;
-use Pst\Core\Enumerable\EnumerableTrait;
-use Pst\Core\Enumerable\Linq\Linq;
-
-use Traversable;
 
 use TypeError;
 use OutOfBoundsException;
@@ -18,62 +13,12 @@ use BadMethodCallException;
 use InvalidArgumentException;
 
 /**
- * Represents a collection traits.
+ * Represents read only collection traits.
  * 
  * @package Pst\Core\Collections
- * 
- * @version 1.0.0
- * 
- * @since 1.0.0
  */
 trait CollectionTrait {
-    use EnumerableTrait {
-        __construct as private enumerableTraitConstruct;
-    }
-
-    private ICollectionContainer $collectionContainer;
-
-    /**
-     * Creates a new instance of Enumerable
-     * 
-     * @param iterable $items 
-     * @param ITypeHint|null $T 
-     * 
-     * @throws TypeError 
-     * @throws InvalidArgumentException 
-     */
-    public function __construct(iterable $items = [], ?ITypeHint $T = null, ?ITypeHint $TKey = null) {
-        $this->collectionContainer = new DefaultCollectionContainer($items, $T, $TKey);
-    }
-
-    /**
-     * Returns if the specified key exists in the collection
-     * 
-     * @param mixed $key
-     * @return bool
-     */
-    public function offsetExists($key): bool {
-        return $this->collectionContainer->offsetExists($key);
-    }
-
-    /**
-     * Gets a from the specified key index
-     * 
-     * @param mixed $key 
-     * 
-     * @return mixed 
-     * 
-     * @throws TypeError 
-     * @throws OutOfBoundsException 
-     * @throws InvalidArgumentException 
-     */
-    public function offsetGet($key) {
-        if (!$this->collectionContainer->offsetExists($key)) {
-            throw new OutOfBoundsException("Key: '{$key}' does not exist.");
-        }
-
-        return $this->collectionContainer->offsetGet($key);
-    }
+    use ReadonlyCollectionTrait;
 
     /**
      * Sets the value of the specified key index (disabled for ReadonlyCollections, will throw BadMethodCallException)
@@ -82,9 +27,23 @@ trait CollectionTrait {
      * @param mixed $value 
      * 
      * @return void 
+     * 
+     * @throws BadMethodCallException 
      */
     public function offsetSet($key, $value): void {
-        $this->collectionContainer->offsetSet($key, $value);
+        if ($this->TKey !== null && !($keyType = Type::typeOf($key))->isAssignableTo($this->TKey)) {
+            throw new TypeError("Key type: {$keyType} is not assignable to key type {$this->TKey}");
+        }
+
+        if ($this->T !== null && !($valueType = Type::typeOf($value))->isAssignableTo($this->T)) {
+            throw new TypeError("Value type: {$valueType} is not assignable to type {$this->T}");
+        }
+
+        if ($this->offsetExists($key)) {
+            // new record
+        }
+            
+        $this->keyValues[$key] = $value;
     }
 
     /**
@@ -97,33 +56,11 @@ trait CollectionTrait {
      * @throws BadMethodCallException 
      */
     public function offsetUnset($key): void {
-        if (!$this->collectionContainer->offsetExists($key)) {
+        if (!$this->offsetExists($key)) {
             throw new OutOfBoundsException("Key: '{$key}' does not exist.");
         }
 
-        $this->collectionContainer->offsetUnset($key);
-    }
-
-    /**
-     * Gets the iterator for the collection
-     * 
-     * @param callable|null $predicate 
-     * 
-     * @return int 
-     */
-    public function getIterator(): Traversable {
-        return $this->collectionContainer;
-    }
-
-    /**
-     * Gets the key index of the specified item
-     * 
-     * @param mixed $item 
-     * 
-     * @return int 
-     */
-    public function indexOf($item): int {
-        return $this->collectionContainer->iterationCount(fn($x) => $x === $item);
+        unset($this->keyValues[$key]);
     }
 
     /**
@@ -137,18 +74,16 @@ trait CollectionTrait {
      * @return bool
      */
     public function tryAdd($item, $key = null): bool {
-        if ($this->collectionContainer->offsetExists($key)) {
-            return false;
-        }
-
         if ($key === null) {
-            $this->collectionContainer->offsetSet(null, $item);
-        } else if (!is_string($key) || !is_int($key)) {
-            throw new InvalidArgumentException("Key must be a string or an integer.");
+            $this->keyValues[] = $item;
         } else {
-            $this->collectionContainer->offsetSet($key, $item);
-        }
+            if ($this->offsetExists($key)) {
+                return false;
+            }
 
+            $this->keyValues[$key] = $item;
+        }
+        
         return true;
     }
 
@@ -174,7 +109,8 @@ trait CollectionTrait {
      * @return void
      */
     public function clear(): void {
-        $this->collectionContainer->clear();
+        $this->source = null;
+        $this->keyValues = [];
     }
 
     /**
@@ -187,15 +123,11 @@ trait CollectionTrait {
      * @throws InvalidArgumentException
      */
     public function remove($key): bool {
-        if (!$this->collectionContainer->offsetExists($key)) {
+        if (!$this->offsetExists($key)) {
             return false;
         }
 
-        if (!is_string($key) || !is_int($key)) {
-            throw new InvalidArgumentException("Key must be a string or an integer.");
-        }
-
-        $this->collectionContainer->offsetUnset($key);
+        unset($this->keyValues[$key]);
 
         return true;
     }

@@ -1,10 +1,8 @@
 <?php
 
-/*T/DD*/
+/*TDD*/
 
 declare(strict_types=1);
-
-//namespace Pst\Core\Tests\DependencyInjection;
 
 require_once(__DIR__ . "/../../vendor/autoload.php");
 

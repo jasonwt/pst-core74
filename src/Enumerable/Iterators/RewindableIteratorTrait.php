@@ -18,7 +18,7 @@ trait RewindableIteratorTrait {
     private int $currentKeyIndex = 0;
     private array $keyValues = [];
 
-    public function __construct(iterable $iterable, bool $lazyLoading = true) {
+    private function __construct(iterable $iterable, bool $lazyLoading = true) {
         if (is_array($iterable)) {
             $this->keyValues = $iterable;
             $this->currentKey = array_key_first($this->keyValues) ?? null;

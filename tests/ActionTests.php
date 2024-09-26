@@ -18,6 +18,7 @@ use InvalidArgumentException;
 require_once(__DIR__ . "/../vendor/autoload.php");
 
 Should::executeTests(function() {
+    echo "need to look at a section in ActionTests.php\n";
     // Should::throw(
     //     InvalidArgumentException::class, 
     //     fn() => Action::new(function($a, $b, $c) {}, TypeHintFactory::undefined(), TypeHintFactory::undefined()),

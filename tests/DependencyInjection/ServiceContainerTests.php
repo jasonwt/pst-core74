@@ -1,24 +1,24 @@
 <?php
 
-/*T/DD*/
+/*TDD*/
 
 declare(strict_types=1);
 
-//namespace Pst\Core\Tests\DependencyInjection;
-
 require_once(__DIR__ . "/../../vendor/autoload.php");
 
-use Pst\Core\DependencyInjection\IServiceCollection;
+use Pst\Core\DependencyInjection\ServiceLifetime;
 use Pst\Core\DependencyInjection\IServiceProvider;
 use Pst\Core\DependencyInjection\ServiceCollection;
 use Pst\Core\DependencyInjection\ServiceDescriptor;
-use Pst\Core\DependencyInjection\ServiceLifetime;
+use Pst\Core\DependencyInjection\IServiceCollection;
 
 use Pst\Testing\Should;
 
 use Pst\Core\Exceptions\ContainerException;
 
 require_once(__DIR__ . "/TestObjects.php");
+
+$serviceCollection = new ServiceCollection();
 
 Should::executeTests(function() {
     $serviceCollection = new ServiceCollection();
@@ -31,6 +31,7 @@ Should::executeTests(function() {
 
     // Should not throw because ConcreteClass1::class is assignable to Interface1::class
     Should::notThrow(Exception::class, fn() => $serviceCollection->add(new ServiceDescriptor(ServiceLifetime::Transient(), Interface1::class, ConcreteClass1::class)));
+
     // Should throw because the service is already registered
     Should::throw(ContainerException::class, fn() => $serviceCollection->add(new ServiceDescriptor(ServiceLifetime::Transient(), Interface1::class, ConcreteClass1::class)));
     // Should not throw because we are using a non used alias

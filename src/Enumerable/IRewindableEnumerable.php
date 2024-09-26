@@ -6,5 +6,5 @@ declare(strict_types=1);
 namespace Pst\Core\Enumerable;
 
 interface IRewindableEnumerable extends IEnumerable {
-    public function rewind(): void;
+    //public function rewind(): void;
 }

@@ -1,6 +1,6 @@
 <?php
 
-/*T/DD*/
+/*TDD*/
 
 declare(strict_types=1);
 

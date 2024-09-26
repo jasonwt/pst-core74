@@ -4,114 +4,158 @@
 
 declare(strict_types=1);
 
-//namespace Pst\Core\Tests\DependencyInjection;
-
 require_once(__DIR__ . "/../../vendor/autoload.php");
 
+use Pst\Core\Collections\Collection;
 use Pst\Core\Collections\ReadonlyCollection;
-use Pst\Core\Types\Type;
+use Pst\Core\Enumerable\Enumerable;
+use Pst\Core\Enumerable\IRewindableEnumerable;
+
+use Pst\Core\Exceptions\InvalidOperationException;
+
 use Pst\Testing\Should;
 
 Should::executeTests(function() {
-    $testArray = [
-        0,
-        "one" => 1,
-        2 => 2,
-        "three" => 3,
-        4 => 4,
-        "five" => 5
+    $mixedTestArray = [
+        "ten" => 10,
+        9 => "nine",
+        "eight" => 8,
+        7 => "seven",
+        "six" => 6,
+        5 => "five",
+        "four" => 4,
+        3 => "three",
+        "two" => 2,
+        1 => "one",
+        "zero" => 0
     ];
 
-    $testArrayGenerator = (fn(): Generator => yield from $testArray)();
+    $mkMixedGenerator = fn() => (function() use ($mixedTestArray) {
+        foreach ($mixedTestArray as $key => $value) {
+            yield $key => $value;
+        }
+    })();
 
+    // creation
+    Should::beTrue(ReadonlyCollection::create([1,2,3,4,5,6,7,8,9,10])->sequenceEqual([1,2,3,4,5,6,7,8,9,10]));
+    Should::beFalse(ReadonlyCollection::create([1,2,3,4,5,6,7,8,9,10])->sequenceEqual([1,2,3,4,5,6,7,8,9,10,11]));
+    Should::beFalse(ReadonlyCollection::create([1,2,3,4,5,6,7,8,9,10,11])->sequenceEqual([1,2,3,4,5,6,7,8,9,10]));
+    Should::beFalse(ReadonlyCollection::create([1,2,3,4,5,6,7,8,9,10])->sequenceEqual([10,9,8,7,6,5,4,3,2,1]));
 
-    $collection = new ReadonlyCollection($testArrayGenerator, Type::int());
+    $enumerable = Enumerable::create($mkMixedGenerator());
 
-    foreach ($collection as $k => $v) {
-        echo "Key: $k, Value: $v\n";
-    }
+    // select
+    $collection = $enumerable->select(
+        fn($value, $key) => !is_string($value) ? $key : $value,
+        fn($value, $key) => is_string($value) ? $key : $value
+    )->toCollection();
 
-    foreach ($collection as $k => $v) {
-        echo $k . ": " . $collection[$k] . "\n";
-        
-    }
+    // isRewindable
+    Should::beTrue($collection->isRewindable() && $collection instanceof IRewindableEnumerable);
 
+    //print_r($collection);
 
+    // sequenceEqual
+    Should::beTrue($collection->sequenceEqual([10=>"ten", 9=>"nine", 8=>"eight", 7=>"seven", 6=>"six", 5=>"five", 4=>"four", 3=>"three", 2=>"two", 1=>"one", 0=>"zero"]));
 
+    // all
+    Should::beTrue($collection->all(fn($v,$k)=>is_string($v) && is_int($k)));
+    Should::beFalse($collection->all(fn($v,$k)=> $v === "one"));
 
-//     $readOnlyCollection = new ReadonlyCollection($testArray, Type::int());
+    // any
+    Should::beTrue($collection->any(fn($v,$k)=> $v === "one"));
+    Should::beFalse($collection->any(fn($v,$k)=> $v === "eleven"));
 
-//     // foreach ($readOnlyCollection as $key => $value) {
-//     //     echo "Key: $key, Value: $value\n";
-//     // }
+    // contains
+    Should::beTrue($collection->contains("one"));
+    Should::beFalse($collection->contains("eleven"));
 
-//     // foreach ($readOnlyCollection as $key => $value) {
-//     //     echo "Key: $key, Value: $value\n";
-//     // }
+    // containsKey
+    Should::beTrue($collection->containsKey(1));
+    Should::beFalse($collection->containsKey(11));
 
-//     Should::equal($testArray[0], $readOnlyCollection[0]);
-//     Should::equal($testArray["one"], $readOnlyCollection["one"]);
-//     Should::equal($testArray[2], $readOnlyCollection[2]);
-//     Should::equal($testArray["three"], $readOnlyCollection["three"]);
-//     Should::equal($testArray[4], $readOnlyCollection[4]);
-//     Should::equal($testArray["five"], $readOnlyCollection["five"]);
+    // count
+    Should::equal($collection->count(), 11);
+    Should::equal($collection->count(fn($v,$k)=>$k > 5), 5);
+    Should::equal($collection->count(fn($v,$k)=>$v === "one"), 1);
 
-//     // Read-only
-//     Should::throw(Exception::class, fn() => $readOnlyCollection[0] = 0);
+    // first
+    Should::equal($collection->first(), "ten");
+    Should::equal($collection->first(fn($v,$k)=>$k < 2), "one");
+    Should::throw(InvalidOperationException::class, fn() => $collection->first(fn($v,$k)=>$v === "eleven"));
 
-//     // Invalid index
-//     Should::throw(Exception::class, fn() => $readOnlyCollection[10]);
+    // firstOrDefault
+    Should::equal($collection->firstOrDefault(), "ten");
+    Should::equal($collection->firstOrDefault(fn($v,$k)=>$v === "one"), "one");
+    Should::equal($collection->firstOrDefault(fn($v,$k)=>$v === "eleven"), "");
 
-//     Should::beTrue($readOnlyCollection->all(fn($v, $k) => $v >= 0));
-//     Should::beFalse($readOnlyCollection->all(fn($v, $k) => $v >= 3));
+    // firstKey
+    Should::equal($collection->firstKey(), 10);
+    Should::equal($collection->firstKey(fn($v,$k)=>$k < 2), 1);
+    Should::throw(InvalidOperationException::class, fn() => $collection->firstKey(fn($v,$k)=>$k < 0));
 
-//     $newTestArray = fn(): IEnumerable => Enumerator::create($testArray, Type::int());
+    // firstKeyOrDefault
+    Should::equal($collection->firstKeyOrDefault(), 10);
+    Should::equal($collection->firstKeyOrDefault(fn($v,$k)=>$k < 2), 1);
+    Should::equal($collection->firstKeyOrDefault(fn($v,$k)=>$k < 0), null);
 
-//     Should::equal($testArray, $newTestArray()->toArray());
+    // iterationCount
+    Should::equal($collection->iterationCount(fn($v,$k)=>$k < 5), 7);
 
-//     Should::beTrue($newTestArray()->all(fn($v, $k) => $v >= 0));
-//     Should::beFalse($newTestArray()->all(fn($v, $k) => $v >= 3));
+    // keys
+    Should::beTrue($collection->keys()->sequenceEqual([10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]));
+    Should::beTrue($collection->keys(fn($v,$k)=>$v === "one")->sequenceEqual([1]));
 
-//     Should::beTrue($newTestArray()->any(fn($v, $k) => $v >= 3));
-//     Should::beFalse($newTestArray()->any(fn($v, $k) => $v >= 6));
+    // last
+    Should::equal($collection->last(), "zero");
+    Should::equal($collection->last(fn($v,$k)=>$k < 2), "zero");
+    Should::throw(InvalidOperationException::class, fn() => $collection->last(fn($v,$k)=>$v === "eleven"));
 
-//     Should::equal(6, $newTestArray()->count());
-//     Should::equal(3, $newTestArray()->count(fn($v, $k) => $v >= 3));
-//     Should::equal(3, $newTestArray()->count(fn($v, $k) => is_string($k)));
+    // lastOrDefault
+    Should::equal($collection->lastOrDefault(), "zero");
+    Should::equal($collection->lastOrDefault(fn($v,$k)=>$v === "one"), "one");
+    Should::equal($collection->lastOrDefault(fn($v,$k)=>$v === "eleven"), "");
 
-//     Should::equal(0, $newTestArray()->first());
-//     Should::equal(3, $newTestArray()->first(fn($v, $k) => $v >= 3));
-//     Should::equal(1, $newTestArray()->first(fn($v, $k) => is_string($k)));
+    // lastKey
+    Should::equal($collection->lastKey(), 0);
+    Should::equal($collection->lastKey(fn($v,$k)=>$k < 2), 0);
+    Should::throw(InvalidOperationException::class, fn() => $collection->lastKey(fn($v,$k)=>$k < 0));
 
-//     Should::equal(5, $newTestArray()->last());
-//     Should::equal(3, $newTestArray()->last(fn($v, $k) => $v <= 3));
-//     Should::equal(4, $newTestArray()->last(fn($v, $k) => !is_string($k)));
-    
-// //    print_r($newTestArray()->orderBy(fn($v, $k) => $k)->toArray());
+    // lastKeyOrDefault
+    Should::equal($collection->lastKeyOrDefault(), 0);
+    Should::equal($collection->lastKeyOrDefault(fn($v,$k)=>$k < 2), 0);
+    Should::equal($collection->lastKeyOrDefault(fn($v,$k)=>$k < 0), null); // TODO, BUG, FIX: NOT SURE ABOUT THIS. NEED TO INVESTIGATE
 
-//     Should::equal([0=>0,"one"=>2,2=>4,"three"=>6, 4=>8,"five"=>10], $newTestArray()->select(fn($x, $k) => $x * 2)->toArray());
-//     Should::equal([0=>0,"one"=>"one",2=>2,"three"=>"three",4=>4,"five"=>"five"], $newTestArray()->select(fn($x, $k) => $k)->toArray());
+    // single
 
-//     // Should::equal($newTestArray()->sequenceEqual($newTestArray()));
+    // singleOrDefault
 
-//     Should::equal([2=>2,"three"=>3,4=>4,"five"=>5], $newTestArray()->skip(2)->toArray());
+    // skip
+    Should::beTrue($collection->skip(5)->sequenceEqual(["five", "four", "three", "two", "one", "zero"]));
 
-//     Should::equal([2=>2,"three"=>3,4=>4,"five"=>5], $newTestArray()->skipWhile(fn($v, $k) => $v < 2)->toArray());
-//     Should::equal(["three"=>3,4=>4,"five"=>5], $newTestArray()->skipWhile(fn($v, $k) => $k !== "three")->toArray());
+    // skipWhile
+    Should::beTrue($collection->skipWhile(fn($v,$k)=>$k >= 6)->sequenceEqual(["five", "four", "three", "two", "one", "zero"]));
 
-//     Should::equal([0=>0,"one"=>1,2=>2], $newTestArray()->take(3)->toArray());
+    // toArray
+    Should::beTrue(is_array($collection->toArray()));
+    Should::equal($collection->toArray(), [10=>"ten", 9=>"nine", 8=>"eight", 7=>"seven", 6=>"six", 5=>"five", 4=>"four", 3=>"three", 2=>"two", 1=>"one", 0=>"zero"]);
 
-//     Should::equal([0=>0,"one"=>1,2=>2], $newTestArray()->takeWhile(fn($v, $k) => $v < 3)->toArray());
-//     Should::equal([0=>0,"one"=>1,2=>2], $newTestArray()->takeWhile(fn($v, $k) => $k !== "three")->toArray());
+    // toCollection
 
-//     Should::equal($testArray, $newTestArray()->where(fn($v, $k) => true)->toArray());
-//     Should::equal([0=>0,2=>2,4=>4], $newTestArray()->where(fn($v, $k) => $v % 2 === 0)->toArray());
-//     Should::equal(["one"=>1,"three"=>3,"five"=>5], $newTestArray()->where(fn($v, $k) => is_string($k))->toArray());
+    // toReadonlyCollection
 
-//     //Should::equal([0,1,2,3,4,5], $newTestArray()->toArray(fn($v, $k) => $v));
+    // toRewindableEnumerable
+    Should::beA($collection->toRewindableEnumerable(), IRewindableEnumerable::class);
 
-    
-//     //print_r($results);
+    // take
+    Should::beTrue($collection->take(5)->sequenceEqual(["ten", "nine", "eight", "seven", "six"]));
 
-    
+    // takeWhile
+    Should::beTrue($collection->takeWhile(fn($v,$k)=>$k > 5)->sequenceEqual(["ten", "nine", "eight", "seven", "six"]));
+
+    // where
+
+    // values
+    Should::beTrue($collection->values()->sequenceEqual(["ten", "nine", "eight", "seven", "six", "five", "four", "three", "two", "one", "zero"]));
+    Should::beFalse($collection->values()->sequenceEqual([10, "nine", 8, "seven", 6, "five", 4, "three", 2, "one", 0])); 
 });

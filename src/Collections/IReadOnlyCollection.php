@@ -9,11 +9,10 @@ use Pst\Core\Enumerable\IRewindableEnumerable;
 
 use Closure;
 use ArrayAccess;
+use Countable;
 
-interface IReadonlyCollection extends IRewindableEnumerable, ArrayAccess {
+interface IReadonlyCollection extends IRewindableEnumerable, ArrayAccess, Countable {
     // readonly methods
-    public function count(?Closure $predicate = null): int;
     public function contains($item): bool;
     public function containsKey($key): bool;
-    public function indexOf($item): int;
 }
