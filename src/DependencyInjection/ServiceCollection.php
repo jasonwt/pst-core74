@@ -8,11 +8,14 @@ namespace Pst\Core\DependencyInjection;
 use Pst\Core\Func;
 use Pst\Core\CoreObject;
 use Pst\Core\Types\Type;
-use Pst\Core\Collections\Collection;
-use Pst\Core\Collections\ICollection;
 use Pst\Core\Enumerable\IEnumerable;
 use Pst\Core\Enumerable\Enumerator;
 use Pst\Core\Enumerable\ImmutableEnumerableLinqTrait;
+use Pst\Core\Collections\Collection;
+use Pst\Core\Collections\ICollection;
+use Pst\Core\Collections\IReadonlyCollection;
+use Pst\Core\Collections\ReadOnlyCollection;
+use Pst\Core\Enumerable\Linq\EnumerableLinqTrait;
 
 use Pst\Core\Exceptions\ContainerException;
 use Pst\Core\Exceptions\DependencyNotFoundException;
@@ -20,12 +23,15 @@ use Pst\Core\Exceptions\DependencyNotFoundException;
 use Closure;
 use Traversable;
 use ArrayIterator;
+use Iterator;
 use IteratorAggregate;
-use Pst\Core\Collections\IReadonlyCollection;
-use Pst\Core\Collections\ReadOnlyCollection;
 use ReflectionClass;
 
-class ServiceCollection extends CoreObject implements IteratorAggregate, IServiceCollection {
+class ServiceCollection extends CoreObject implements Iterator, IServiceCollection {
+    use EnumerableLinqTrait {
+
+    }
+
     private array $services = [];
     private ICollection $serviceCollection;
 
@@ -35,9 +41,9 @@ class ServiceCollection extends CoreObject implements IteratorAggregate, IServic
      * @param IEnumerable|array $services The services to add to the collection.
      */
     public function __construct(iterable $services = []) {
-        $this->serviceCollection = Collection::new($services, Type::typeOf(ServiceDescriptor::class));
+        $this->serviceCollection = Collection::create($services, Type::typeOf(ServiceDescriptor::class));
 
-        foreach (Enumerator::new($services) as $alias => $service) {
+        foreach (Enumerator::create($services) as $alias => $service) {
             if (!is_string($alias) || is_numeric($alias)) {
                 throw new ContainerException("Service alias must be a string.");
             }
@@ -217,11 +223,11 @@ class ServiceCollection extends CoreObject implements IteratorAggregate, IServic
     }
 
     public function toCollection(): ICollection {
-        return Collection::new($this->serviceCollection);
+        return Collection::create($this->serviceCollection);
     }
 
     public function toReadonlyCollection(): IReadonlyCollection {
-        return ReadonlyCollection::new($this->serviceCollection);
+        return ReadonlyCollection::create($this->serviceCollection);
     }
 
     

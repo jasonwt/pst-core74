@@ -1,21 +1,20 @@
 <?php
+/*__FILEDOCBLOCK__*/
 
 declare(strict_types=1);
 
 namespace Pst\Core\Enumerable;
 
-use Pst\Core\Interfaces\IToArray;
 use Pst\Core\Types\ITypeHint;
-use Pst\Core\Collections\IToCollection;
-use Pst\Core\Collections\IToReadonlyCollection;
+use Pst\Core\Interfaces\ICoreObject;
+use Pst\Core\Enumerable\Linq\IEnumerableLinq;
 
+use Iterator;
 use Traversable;
 
-interface IEnumerable extends Traversable, IToArray, IToReadonlyCollection, IToCollection {
+interface IEnumerable extends ICoreObject, Traversable, IEnumerableLinq {
     public function T(): ITypeHint;
+    public function TKey(): ITypeHint;
 
-    // public function current();
-    // public function key();
-    // public function next();
-    // public function valid(): bool;
+    public function getIterator(): Iterator;
 }

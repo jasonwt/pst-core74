@@ -30,35 +30,41 @@ Should::executeTests(function() {
 
     ];
 
-    $generator = (function() use ($testArray): Traversable {
+    $generator = (function() use ($testArray): Generator {
         foreach ($testArray as $k => $v) {
             yield $k => $v;
         }
     })();
 
-    $readOnlyCollection = new Collection($generator, TypeUnion::new(Type::int(), Type::string()));
+    $collection = new Collection($generator, TypeUnion::new(Type::int(), Type::string()));
 
-    // print_r($readOnlyCollection);
-    // $readOnlyCollection->offsetExists(2);
-    // print_r($readOnlyCollection);
-    // foreach ($readOnlyCollection as $k => $v) {
+    // print_r($collection);
+    // $collection->offsetExists(2);
+    // print_r($collection);
+    // foreach ($collection as $k => $v) {
     //     echo "$k => $v\n";
     // }
-    // print_r($readOnlyCollection);
+    // print_r($collection);
 
-    Should::equal($testArray[0], $readOnlyCollection[0]);
-    Should::equal($testArray["one"], $readOnlyCollection["one"]);
-    Should::equal($testArray[2], $readOnlyCollection[2]);
-    Should::equal($testArray["three"], $readOnlyCollection["three"]);
-    Should::equal($testArray[4], $readOnlyCollection[4]);
-    Should::equal($testArray["five"], $readOnlyCollection["five"]);
+    Should::equal($testArray[0], $collection[0]);
+    Should::equal($testArray["one"], $collection["one"]);
+    Should::equal($testArray[2], $collection[2]);
+    Should::equal($testArray["three"], $collection["three"]);
+    Should::equal($testArray[4], $collection[4]);
+    Should::equal($testArray["five"], $collection["five"]);
 
     // Not Read-only
-    Should::notThrow(Exception::class, fn() => $readOnlyCollection[0] = 0);
+    Should::notThrow(Exception::class, fn() => $collection[0] = 0);
 
     // Invalid index
-    Should::throw(Exception::class, fn() => $readOnlyCollection[11]);
+    Should::throw(Exception::class, fn() => $collection[11]);
 
-    // Should::beTrue($readOnlyCollection->all(fn($v) => $v >= 0));
-    // Should::beFalse($readOnlyCollection->all(fn($v) => $v > 10));    
+    // Should::beTrue($collection->all(fn($v) => $v >= 0));
+    // Should::beFalse($collection->all(fn($v) => $v > 10));
+
+    $collection->add(11, "eleven");
+
+    // foreach ($collection as $k => $v) {
+    //     echo "$k => $v\n";
+    // }
 });

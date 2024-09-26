@@ -135,6 +135,15 @@ class SpecialType extends CoreObject implements ITypeHint {
     }
 
     /**
+     * Gets the default value of the current type
+     * 
+     * @return mixed 
+     */
+    public function defaultValue() {
+        return null;
+    }
+
+    /**
      * Gets the string representation of the current type
      * 
      * @return string 

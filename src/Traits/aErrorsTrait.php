@@ -59,6 +59,6 @@ trait aErrorsTrait {
             return "";
         }
 
-        return Enumerator::new($functionErrors)->select(fn($errorMessage, $key) => "'{$key}': {$errorMessage}")->join("\n");
+        return Enumerator::create($functionErrors)->select(fn($errorMessage, $key) => "'{$key}': {$errorMessage}")->join("\n");
     }
 }

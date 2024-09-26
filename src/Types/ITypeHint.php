@@ -12,5 +12,7 @@ interface ITypeHint extends ICoreObject {
     public function isAssignableTo(ITypeHint $type): bool;
     public function isAssignableFrom(ITypeHint $type): bool;
 
+    public function defaultValue();
+
     public function __toString(): string;
 }

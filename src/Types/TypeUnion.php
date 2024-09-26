@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Pst\Core\Types;
 
-use Pst\Core\Interfaces\ITryParse;
 use Pst\Core\CoreObject;
+use Pst\Core\Interfaces\ITryParse;
 
 use InvalidArgumentException;
 
@@ -134,6 +134,15 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
         }
 
         return (self::$isAssignableCache[$isAssignableCacheKey] = false);
+    }
+
+    /**
+     * Gets the default value of the current instance
+     * 
+     * @return mixed 
+     */
+    public function defaultValue() {
+        return null;
     }
 
     /**

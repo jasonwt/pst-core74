@@ -118,6 +118,11 @@ final class TypeHintFactory implements ITryParse{
         throw new NotImplementedException();
     }
 
+
+    public static function optional(... $types): TypeUnion {
+        return TypeUnion::new(... [... $types, "void"]);
+    }
+
     /**
      * Creates a new TypeUnion instance
      * 

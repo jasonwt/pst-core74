@@ -45,6 +45,6 @@ trait aStaticErrorsTrait {
     }
 
     public static function getStaticErrors(): IReadonlyCollection {
-        return ReadonlyCollection::new(static::$staticErrorsTraitErrors ?? [], TypeHintFactory::array());
+        return ReadonlyCollection::create(static::$staticErrorsTraitErrors ?? [], TypeHintFactory::array());
     }
 }

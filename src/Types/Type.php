@@ -60,6 +60,7 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
     private bool $isObject = false;
     private bool $isReferenceType = false;
     private bool $isResource = false;
+    private ?bool $isScalerType = null;
     private bool $isString = false;
     private bool $isTrait = false;
     private bool $isValueType = false;
@@ -227,6 +228,10 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
 
     public function isReferenceType(): bool {
         return $this->isReferenceType;
+    }
+
+    public function isScalerType(): bool {
+        return $this->isBool || $this->isInt || $this->isFloat || $this->isString;
     }
 
     public function isString(): bool {

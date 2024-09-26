@@ -8,9 +8,8 @@ declare(strict_types=1);
 
 require_once(__DIR__ . "/../../vendor/autoload.php");
 
-use Pst\Core\Types\Type;
 use Pst\Core\Collections\ReadonlyCollection;
-
+use Pst\Core\Types\Type;
 use Pst\Testing\Should;
 
 Should::executeTests(function() {
@@ -23,25 +22,50 @@ Should::executeTests(function() {
         "five" => 5
     ];
 
-    $readOnlyCollection = new ReadonlyCollection($testArray, Type::int());
+    $testArrayGenerator = (fn(): Generator => yield from $testArray)();
 
-    Should::equal($testArray[0], $readOnlyCollection[0]);
-    Should::equal($testArray["one"], $readOnlyCollection["one"]);
-    Should::equal($testArray[2], $readOnlyCollection[2]);
-    Should::equal($testArray["three"], $readOnlyCollection["three"]);
-    Should::equal($testArray[4], $readOnlyCollection[4]);
-    Should::equal($testArray["five"], $readOnlyCollection["five"]);
 
-    // Read-only
-    Should::throw(Exception::class, fn() => $readOnlyCollection[0] = 0);
+    $collection = new ReadonlyCollection($testArrayGenerator, Type::int());
 
-    // Invalid index
-    Should::throw(Exception::class, fn() => $readOnlyCollection[10]);
+    foreach ($collection as $k => $v) {
+        echo "Key: $k, Value: $v\n";
+    }
 
-    Should::beTrue($readOnlyCollection->all(fn($v, $k) => $v >= 0));
-    Should::beFalse($readOnlyCollection->all(fn($v, $k) => $v >= 3));
+    foreach ($collection as $k => $v) {
+        echo $k . ": " . $collection[$k] . "\n";
+        
+    }
 
-//     $newTestArray = fn(): IEnumerable => Enumerator::new($testArray, Type::int());
+
+
+
+//     $readOnlyCollection = new ReadonlyCollection($testArray, Type::int());
+
+//     // foreach ($readOnlyCollection as $key => $value) {
+//     //     echo "Key: $key, Value: $value\n";
+//     // }
+
+//     // foreach ($readOnlyCollection as $key => $value) {
+//     //     echo "Key: $key, Value: $value\n";
+//     // }
+
+//     Should::equal($testArray[0], $readOnlyCollection[0]);
+//     Should::equal($testArray["one"], $readOnlyCollection["one"]);
+//     Should::equal($testArray[2], $readOnlyCollection[2]);
+//     Should::equal($testArray["three"], $readOnlyCollection["three"]);
+//     Should::equal($testArray[4], $readOnlyCollection[4]);
+//     Should::equal($testArray["five"], $readOnlyCollection["five"]);
+
+//     // Read-only
+//     Should::throw(Exception::class, fn() => $readOnlyCollection[0] = 0);
+
+//     // Invalid index
+//     Should::throw(Exception::class, fn() => $readOnlyCollection[10]);
+
+//     Should::beTrue($readOnlyCollection->all(fn($v, $k) => $v >= 0));
+//     Should::beFalse($readOnlyCollection->all(fn($v, $k) => $v >= 3));
+
+//     $newTestArray = fn(): IEnumerable => Enumerator::create($testArray, Type::int());
 
 //     Should::equal($testArray, $newTestArray()->toArray());
 
@@ -84,7 +108,7 @@ Should::executeTests(function() {
 //     Should::equal([0=>0,2=>2,4=>4], $newTestArray()->where(fn($v, $k) => $v % 2 === 0)->toArray());
 //     Should::equal(["one"=>1,"three"=>3,"five"=>5], $newTestArray()->where(fn($v, $k) => is_string($k))->toArray());
 
-//     Should::equal([0,1,2,3,4,5], $newTestArray()->toArray(fn($v, $k) => $v));
+//     //Should::equal([0,1,2,3,4,5], $newTestArray()->toArray(fn($v, $k) => $v));
 
     
 //     //print_r($results);

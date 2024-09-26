@@ -45,7 +45,7 @@ trait DynamicPropertiesObjectTrait {
      * @throws InvalidArgumentException
      */
     public function __construct(iterable $propertyValues) {
-        $this->dynamicPropertiesObjectTrait["propertyValues"] = ReadonlyCollection::new($propertyValues);
+        $this->dynamicPropertiesObjectTrait["propertyValues"] = ReadonlyCollection::create($propertyValues);
 
         $propertyValidations = [];
         $setPropertyNames = [];
@@ -143,7 +143,7 @@ trait DynamicPropertiesObjectTrait {
      * @return IReadonlyCollection The external property values.
      */
     protected function fromInternalPropertyValues(iterable $internalPropertyValues): IReadonlyCollection {
-        return ReadonlyCollection::new($internalPropertyValues)->
+        return ReadonlyCollection::create($internalPropertyValues)->
             select(fn($internalPropertyValue, $propertyName) => $this->fromInternalPropertyValue($propertyName, $internalPropertyValue))->
             toReadonlyCollection();
     }
@@ -185,7 +185,7 @@ trait DynamicPropertiesObjectTrait {
      * @return IReadonlyCollection The property values.
      */
     public function getPropertyValues(): IReadonlyCollection {
-        return Enumerator::new($this->propertyValues())->
+        return Enumerator::create($this->propertyValues())->
             select(fn($propertyValue, $propertyName) => $this->fromInternalPropertyValue($propertyName, $propertyValue))->
             toReadonlyCollection();
     }
@@ -241,7 +241,7 @@ trait DynamicPropertiesObjectTrait {
 
         $currentPropertyValues = $this->propertyValues();
 
-        $changedPropertyValues = Enumerator::new($propertyValues)->
+        $changedPropertyValues = Enumerator::create($propertyValues)->
             select(function($externalPropertyValue, $propertyName) {
                 if (empty($propertyName = trim($propertyName))) {
                     $this->exceptions()->addException("setPropertyValues", new InvalidArgumentException("Property name cannot be empty."), "nullPropertyName");
@@ -271,7 +271,7 @@ trait DynamicPropertiesObjectTrait {
             return false;
         }
 
-        $this->dynamicPropertiesObjectTrait["propertyValues"] = ReadonlyCollection::new(
+        $this->dynamicPropertiesObjectTrait["propertyValues"] = ReadonlyCollection::create(
             $changedPropertyValues->toArray() + $currentPropertyValues->toArray()
         );
 

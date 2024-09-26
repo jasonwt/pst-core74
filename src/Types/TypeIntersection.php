@@ -160,6 +160,19 @@ class TypeIntersection extends CoreObject implements ITypeHint, ITryParse {
     }
 
     /**
+     * Gets the default value of the current type
+     * 
+     * @return null 
+     */
+    public function defaultValue() {
+        return null;
+    }
+
+    public function __toString(): string {
+        return $this->fullName;
+    }
+
+    /**
      * Creates a new TypeIntersection instance
      * 
      * @param string|ITypeHint ...$types 
