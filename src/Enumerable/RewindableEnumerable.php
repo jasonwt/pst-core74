@@ -8,8 +8,10 @@ use Pst\Core\CoreObject;
 use Pst\Core\Types\Type;
 use Pst\Core\Types\ITypeHint;
 use Pst\Core\Types\TypeHintFactory;
+use Pst\Core\Traits\ShouldTypeCheckTrait;
 use Pst\Core\Enumerable\Linq\EnumerableLinqTrait;
 use Pst\Core\Enumerable\Iterators\RewindableIterator;
+use Pst\Core\Enumerable\Iterators\IRewindableIterator;
 
 use Iterator;
 use ArrayIterator;
@@ -18,9 +20,10 @@ use IteratorAggregate;
 
 use TypeError;
 use InvalidArgumentException;
-use Pst\Core\Enumerable\Iterators\IRewindableIterator;
 
 class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRewindableEnumerable {
+    use ShouldTypeCheckTrait;
+
     use EnumerableLinqTrait {}
 
     private ITypeHint $T;
@@ -43,6 +46,14 @@ class RewindableEnumerable extends CoreObject implements IteratorAggregate, IRew
             if ($iterator instanceof IEnumerable) {
                 $T ??= $iterator->T();
                 $TKey ??= $iterator->TKey();
+
+                if (!$T->isAssignableFrom($iterator->T())) {
+                    throw new TypeError("{$T} is not assignable to {$iterator->T()}");
+                }
+
+                if (!$TKey->isAssignableFrom($iterator->TKey())) {
+                    throw new TypeError("{$TKey} is not assignable to {$iterator->TKey()}");
+                }
             }
 
             while ($iterator instanceof IteratorAggregate) {

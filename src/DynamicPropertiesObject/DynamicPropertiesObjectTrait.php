@@ -11,7 +11,7 @@ use Pst\Core\Events\IEvent;
 use Pst\Core\Events\IEventSubscriptions;
 use Pst\Core\Exceptions\Exceptions;
 use Pst\Core\Exceptions\IExceptions;
-use Pst\Core\Enumerable\Enumerator;
+use Pst\Core\Enumerable\Enumerable;
 use Pst\Core\Collections\ReadonlyCollection;
 use Pst\Core\Collections\IReadonlyCollection;
 
@@ -185,7 +185,7 @@ trait DynamicPropertiesObjectTrait {
      * @return IReadonlyCollection The property values.
      */
     public function getPropertyValues(): IReadonlyCollection {
-        return Enumerator::create($this->propertyValues())->
+        return Enumerable::create($this->propertyValues())->
             select(fn($propertyValue, $propertyName) => $this->fromInternalPropertyValue($propertyName, $propertyValue))->
             toReadonlyCollection();
     }
@@ -241,7 +241,7 @@ trait DynamicPropertiesObjectTrait {
 
         $currentPropertyValues = $this->propertyValues();
 
-        $changedPropertyValues = Enumerator::create($propertyValues)->
+        $changedPropertyValues = Enumerable::create($propertyValues)->
             select(function($externalPropertyValue, $propertyName) {
                 if (empty($propertyName = trim($propertyName))) {
                     $this->exceptions()->addException("setPropertyValues", new InvalidArgumentException("Property name cannot be empty."), "nullPropertyName");

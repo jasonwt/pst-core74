@@ -7,8 +7,11 @@ namespace Pst\Core\Enumerable;
 use Pst\Core\CoreObject;
 use Pst\Core\Types\Type;
 use Pst\Core\Types\ITypeHint;
+use Pst\Core\Types\TypeUnion;
 use Pst\Core\Types\TypeHintFactory;
+use Pst\Core\Traits\ShouldTypeCheckTrait;
 use Pst\Core\Enumerable\Linq\EnumerableLinqTrait;
+use Pst\Core\Enumerable\Iterators\IRewindableIterator;
 
 use Iterator;
 use Generator;
@@ -18,12 +21,10 @@ use IteratorAggregate;
 
 use TypeError;
 use InvalidArgumentException;
-use NoRewindIterator;
-use Pst\Core\Enumerable\Iterators\IRewindableIterator;
-use Pst\Core\Types\TypeUnion;
-use RecursiveIterator;
 
 class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
+    use ShouldTypeCheckTrait;
+
     use EnumerableLinqTrait {}
 
     private ITypeHint $T;
@@ -47,6 +48,14 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
             if ($iterator instanceof IEnumerable) {
                 $T ??= $iterator->T();
                 $TKey ??= $iterator->TKey();
+
+                if (!$T->isAssignableFrom($iterator->T())) {
+                    throw new TypeError("{$T} is not assignable to {$iterator->T()}");
+                }
+
+                if (!$TKey->isAssignableFrom($iterator->TKey())) {
+                    throw new TypeError("{$TKey} is not assignable to {$iterator->TKey()}");
+                }
             }
 
             while ($iterator instanceof IteratorAggregate) {
@@ -160,13 +169,13 @@ class Enumerable extends CoreObject implements IteratorAggregate, IEnumerable {
             if ($T === null) {
                 $T = $iterableT;
             } else if (!$T->isAssignableFrom($iterableT)) {
-                throw new TypeError("{$T} is not assignable to {$iterableT}");
+                throw new TypeError("{$T} is not assignable from {$iterableT}");
             }
 
             if ($TKey === null) {
                 $TKey = $iterableTKey;
             } else if (!$TKey->isAssignableFrom($iterableTKey)) {
-                throw new TypeError("{$TKey} is not assignable to {$iterableTKey}");
+                throw new TypeError("{$TKey} is not assignable from {$iterableTKey}");
             }
             
             if ($iterable instanceof Enumerable) {    

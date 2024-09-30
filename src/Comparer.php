@@ -21,7 +21,7 @@ abstract class Comparer extends CoreObject implements IComparer {
                     return $x === $y ? 0 : ($x < $y ? -1 : 1);
                 };
 
-                $this->compare = Func::new($compareFunc, $T, $T, TypeHintFactory::tryParse("int"));
+                $this->compare = Func::new($compareFunc, $T, $T, TypeHintFactory::tryParseTypeName("int"));
             }
 
             public function compare($x, $y): int {

@@ -10,7 +10,7 @@ require_once(__DIR__ . "/../vendor/autoload.php");
 
 use Pst\Core\Debugger;
 use Pst\Core\Types\TypeHintFactory;
-use Pst\Core\Enumerable\Enumerator;
+use Pst\Core\Enumerable\Enumerable;
 use Pst\Core\Enumerable\Iterators\LazyArrayIterator;
 use Pst\Testing\Should;
 

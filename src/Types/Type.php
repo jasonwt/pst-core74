@@ -6,13 +6,15 @@ declare(strict_types=1);
 namespace Pst\Core\Types;
 
 use Pst\Core\Enum;
-use Pst\Core\Interfaces\ITryParse;
 use Pst\Core\CoreObject;
 use Pst\Core\Interfaces\ICoreObject;
+use Pst\Core\Caching\Caching;
+use Pst\Core\Caching\NonEvictingArrayCache;
 
 use Pst\Core\Exceptions\InvalidOperationException;
 
 use ReflectionClass;
+
 use InvalidArgumentException;
 
 if (!function_exists("enum_exists")) {
@@ -29,10 +31,7 @@ if (!function_exists("enum_exists")) {
  * @since 1.0.0
  * 
  */
-final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse {
-    private static array $typeNameCache = [];
-    private static array $getTypeInfoCache = [];
-
+final class Type extends CoreObject implements ICoreObject, ITypeHint {
     const TYPES = [
         "array"  => ["isArray"  => true,  "isValueType"   => true,  "defaultValue" => []],
         "bool"   => ["isBool"   => true,  "isValueType"   => true,  "defaultValue" => false],
@@ -40,7 +39,6 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
         "int"    => ["isInt"    => true,  "isNumericType" => true,  "isValueType"  => true,   "defaultValue" => 0],
         "null"   => ["isNull"   => true,  "defaultValue"  => null],
         "string" => ["isString" => true,  "isValueType"   => true,  "defaultValue" => ""],
-        "void"   => ["isVoid"   => true],
     ];
 
     private string $namespace = "";
@@ -80,67 +78,65 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Type name cannot be empty.");
         }
 
-        if (isset(self::$getTypeInfoCache[$name])) {
-            return self::$getTypeInfoCache[$name];
-        }
-
-        $typeInfo = [
-            "namespace"    => "",    "name"            => $name, "fullName" => $name, 
-            "defaultValue" => null,
-            "isAbstract"   => false, "isArray"         => false, "isBool" => false,
-            "isClass"      => false, "isEnum"          => false, "isFloat" => false,
-            "isInt"        => false, "isInterface"     => false, "isNull" => false,
-            "isObject"     => false, "isReferenceType" => false, "isString" => false,
-            "isTrait"      => false, "isValueType"     => false, "isVoid" => false,
-        ];
-
-        if (($constTypeInfo = (self::TYPES[$name] ?? null)) !== null) {
-            foreach ($constTypeInfo as $key => $value) {
-                $typeInfo[$key] = $value;
-            }
-        } else {
-            if (trait_exists($name)) {
-                $typeInfo["isTrait"] = true;
-                $typeInfo["isAbstract"] = true;
-
-            } else if (enum_exists($name) ||  is_a($name, Enum::class, true)) {
-                $typeInfo["isEnum"] = true;
-                $typeInfo["isReferenceType"] = true;
-
-            } else if (class_exists($name)) {
-                $typeInfo["isClass"] = true;
-                $typeInfo["isObject"] = true;
-                $typeInfo["isReferenceType"] = true;
-                $typeInfo["isAbstract"] = (new ReflectionClass($name))->isAbstract();
-
-            } else if (interface_exists($name)) {
-                $typeInfo["isInterface"] = true;
-                $typeInfo["isObject"] = true;
-                $typeInfo["isReferenceType"] = true;
-                $typeInfo["isAbstract"] = true;
-
-            } else {
-                return null;
-            }
-
-            $nameParts = explode("\\", ($name = trim($name)));
-
-            foreach ($nameParts as $part) {
-                // validate part is a valid php identifier
-                if (substr($part, 0, 15) !== "class@anonymous" && !preg_match("/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/", $part)) {
-                    throw new InvalidArgumentException("Invalid type name near '$name'");
+        return Caching::getWithSet($name, function() use ($name) {
+            $typeInfo = [
+                "namespace"    => "",    "name"            => $name, "fullName" => $name, 
+                "defaultValue" => null,
+                "isAbstract"   => false, "isArray"         => false, "isBool" => false,
+                "isClass"      => false, "isEnum"          => false, "isFloat" => false,
+                "isInt"        => false, "isInterface"     => false, "isNull" => false,
+                "isObject"     => false, "isReferenceType" => false, "isString" => false,
+                "isTrait"      => false, "isValueType"     => false, "isVoid" => false,
+            ];
+    
+            if (($constTypeInfo = (self::TYPES[$name] ?? null)) !== null) {
+                foreach ($constTypeInfo as $key => $value) {
+                    $typeInfo[$key] = $value;
                 }
+            } else {
+                if (trait_exists($name)) {
+                    $typeInfo["isTrait"] = true;
+                    $typeInfo["isAbstract"] = true;
+    
+                } else if (enum_exists($name) ||  is_a($name, Enum::class, true)) {
+                    $typeInfo["isEnum"] = true;
+                    $typeInfo["isReferenceType"] = true;
+    
+                } else if (class_exists($name)) {
+                    $typeInfo["isClass"] = true;
+                    $typeInfo["isObject"] = true;
+                    $typeInfo["isReferenceType"] = true;
+                    $typeInfo["isAbstract"] = (new ReflectionClass($name))->isAbstract();
+    
+                } else if (interface_exists($name)) {
+                    $typeInfo["isInterface"] = true;
+                    $typeInfo["isObject"] = true;
+                    $typeInfo["isReferenceType"] = true;
+                    $typeInfo["isAbstract"] = true;
+    
+                } else {
+                    return null;
+                }
+    
+                $nameParts = explode("\\", ($name = trim($name)));
+    
+                foreach ($nameParts as $part) {
+                    // validate part is a valid php identifier
+                    if (substr($part, 0, 15) !== "class@anonymous" && !preg_match("/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/", $part)) {
+                        throw new InvalidArgumentException("Invalid type name near '$name'");
+                    }
+                }
+    
+                $typeInfo["name"] = array_pop($nameParts);
+    
+                if (($typeInfo["namespace"] = implode("\\", $nameParts)) !== "") {
+                    $typeInfo["fullName"] = $typeInfo["namespace"] . "\\" . $typeInfo["name"];
+                }
+                
             }
 
-            $typeInfo["name"] = array_pop($nameParts);
-
-            if (($typeInfo["namespace"] = implode("\\", $nameParts)) !== "") {
-                $typeInfo["fullName"] = $typeInfo["namespace"] . "\\" . $typeInfo["name"];
-            }
-            
-        }
-
-        return (self::$getTypeInfoCache[$name] = $typeInfo);
+            return $typeInfo;
+        }, "Type::getTypeInfo");
     }
 
     /**
@@ -157,13 +153,17 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Type name cannot be empty.");
         }
 
-        if (($properties = (self::$getTypeInfoCache[$name] ?? static::getTypeInfo($name))) === null) {
+        if (($properties = self::getTypeInfo($name)) === null) {
             throw new InvalidArgumentException("Type '{$name}' does not exist.");
         }
-        
+
         foreach ($properties as $propertyName => $propertyValue) {
             $this->{$propertyName} = $propertyValue;
         }
+    }
+
+    public function typeGroup(): string {
+        return Type::class;
     }
 
     public function name(): string {
@@ -246,10 +246,6 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
         return $this->isValueType;
     }
 
-    public function isVoid(): bool {
-        return $this->isVoid;
-    }
-
     public function isResource(): bool {
         return $this->isResource;
     }
@@ -268,7 +264,7 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
         return $this->defaultValue;
     }
 
-    public function isAssignableFrom(ITypeHint $other): bool {        
+    public function isAssignableFrom(ITypeHint $other): bool {
         // echo get_class($this) . "::" . $this->fullName() . "->isAssignableFrom(" . get_class($other) . "::" . $other->fullName() . ")\n";
 
         if (($toTypeName = $this->fullName()) === ($fromTypeName = $other->fullName())) {
@@ -286,6 +282,13 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
         return $other->isAssignableFrom($this);
     }
 
+    public function _toString(): string {
+        return $this->fullName;
+    }
+
+    public function toString(): string {
+        return $this->fullName;
+    }
 
     /**
      * Gets the type of the provided value
@@ -319,7 +322,9 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Unsupported value type: '$inputType'");
         } 
 
-        return (self::$typeNameCache[$inputType] ??= new Type($inputType));
+        return Caching::getWithSet($inputType, function() use ($inputType) {
+            return new Type($inputType);
+        }, "ITypeHint::create");
     }
 
     /**
@@ -343,7 +348,9 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Type hint cannot be empty");
         }
 
-        return (self::$typeNameCache[$input] ??= new Type($input));
+        return Caching::getWithSet($input, function() use ($input) {
+            return new Type($input);
+        }, "ITypeHint::create");
     }
 
     /**
@@ -370,7 +377,7 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("typeNameOrITypeHint must be a string or an instance of ITypeHint");
         }
 
-        $output = self::tryParse($typeNameOrITypeHint);
+        $output = self::tryParseTypeName($typeNameOrITypeHint);
 
         return $output !== null;
     }
@@ -382,46 +389,54 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
      * 
      * @return Type|null 
      */
-    public static function tryParse(string $input): ?Type {
+    public static function tryParseTypeName(string $input): ?Type {
         if (empty($input = trim($input))) {
             return null;
         }
 
-        if (!isset(self::$typeNameCache[$input])) {
-            if ((self::$getTypeInfoCache[$input] ??= self::getTypeInfo($input)) === null) {
+        return Caching::getWithSet($input, function() use ($input) {
+            if (($typeInfo = self::getTypeInfo($input)) === null) {
                 return null;
             }
-        }
 
-        return (self::$typeNameCache[$input] = new Type($input));
+            return new Type($input);
+        }, "ITypeHint::create");
     }
     
     public static function array(): Type {
-        return (self::$typeNameCache["array"] ??= new Type("array"));
+        return Caching::getWithSet("array", function() {
+            return new Type("array");
+        }, "ITypeHint::create");
     }
 
     public static function bool(): Type {
-        return (self::$typeNameCache["bool"] ??= new Type("bool"));
+        return Caching::getWithSet("bool", function() {
+            return new Type("bool");
+        }, "ITypeHint::create");
     }
 
     public static function float(): Type {
-        return (self::$typeNameCache["float"] ??= new Type("float"));
+        return Caching::getWithSet("float", function() {
+            return new Type("float");
+        }, "ITypeHint::create");
     }
 
     public static function int(): Type {
-        return (self::$typeNameCache["int"] ??= new Type("int"));
+        return Caching::getWithSet("int", function() {
+            return new Type("int");
+        }, "ITypeHint::create");
     }
 
     public static function null(): Type {
-        return (self::$typeNameCache["null"] ??= new Type("null"));
+        return Caching::getWithSet("null", function() {
+            return new Type("null");
+        }, "ITypeHint::create");
     }
 
     public static function string(): Type {
-        return (self::$typeNameCache["string"] ??= new Type("string"));
-    }
-
-    public static function void(): Type {
-        return (self::$typeNameCache["void"] ??= new Type("void"));
+        return Caching::getWithSet("string", function() {
+            return new Type("string");
+        }, "ITypeHint::create");
     }
 
     /**
@@ -440,7 +455,9 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Interface '{$name}' does not exist.");
         }
 
-        return (self::$typeNameCache[$name] ??= new Type($name));
+        return Caching::getWithSet($name, function() use ($name) {
+            return new Type($name);
+        }, "ITypeHint::create");
     }
 
     /**
@@ -459,7 +476,9 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Class '{$name}' does not exist.");
         }
 
-        return (self::$typeNameCache[$name] ??= new Type($name));
+        return Caching::getWithSet($name, function() use ($name) {
+            return new Type($name);
+        }, "ITypeHint::create");
     }
 
     /**
@@ -478,7 +497,9 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Trait '{$name}' does not exist.");
         }
 
-        return (self::$typeNameCache[$name] ??= new Type($name));
+        return Caching::getWithSet($name, function() use ($name) {
+            return new Type($name);
+        }, "ITypeHint::create");
     }
 
     /**
@@ -497,6 +518,10 @@ final class Type extends CoreObject implements ICoreObject, ITypeHint, ITryParse
             throw new InvalidArgumentException("Enum '{$name}' does not exist.");
         }
 
-        return (self::$typeNameCache[$name] ??= new Type($name));
+        return Caching::getWithSet($name, function() use ($name) {
+            return new Type($name);
+        }, "ITypeHint::create");
     }
 }
+
+Caching::registerCache("Type::getTypeInfo", new NonEvictingArrayCache());

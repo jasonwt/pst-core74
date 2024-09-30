@@ -159,7 +159,7 @@ Should::executeTests(function() {
 //         $generator->next();
 //     }
 
-//     // $enumerator = Enumerator::create($generator, TypeHintFactory::mixed());
+//     // $enumerator = Enumerable::create($generator, TypeHintFactory::mixed());
 //     // $enumerator = $enumerator->where(fn($v, $k) => $v > 2);
 
 //     // print_r($enumerator->toArray());
@@ -177,7 +177,7 @@ Should::executeTests(function() {
 
     
 
-// //     $newTestArray = fn(): IImmutableEnumerable => Enumerator::create($testArray, Type::int());
+// //     $newTestArray = fn(): IImmutableEnumerable => Enumerable::create($testArray, Type::int());
 
 // //     Should::equal($testArray, $newTestArray()->toArray());
 

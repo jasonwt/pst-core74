@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Pst\Core\Types;
 
-use Pst\Core\Interfaces\ITryParse;
+use Pst\Core\Caching\Caching;
+
 use Pst\Core\Exceptions\NotImplementedException;
 
 use InvalidArgumentException;
 
-final class TypeHintFactory implements ITryParse{
+final class TypeHintFactory {
     private static array $typeNameCache = [];
 
     // Static class
@@ -47,36 +48,31 @@ final class TypeHintFactory implements ITryParse{
                 $input = "mixed";
             } 
 
-            if (isset(self::$typeNameCache[$input])) {
-                return self::$typeNameCache[$input];
-            }
-
-            return (self::$typeNameCache[$input] = Type::new($input));
-
+            return Caching::getWithSet($input,function() use ($input) {
+                return Type::new($input);
+            }, "ITypeHint::create");
         } else if ($inputType !== "string") {
             throw new \InvalidArgumentException("Type hint must be a string or any type with the byValue flag set to true");
         } else if (empty($input = trim($input))) {
             throw new \InvalidArgumentException("Type hint cannot be empty");
         }
 
-        if (isset(self::$typeNameCache[$input])) {
-            return self::$typeNameCache[$input];
-        }
+        return Caching::getWithSet($input,function() use ($input) {
+            if (in_array($input, SpecialType::SPECIAL_TYPES)) {
+                return SpecialType::new($input);
+            }
 
-        if (in_array($input, SpecialType::SPECIAL_TYPES)) {
-            return self::$typeNameCache[$input] = SpecialType::new($input);
-        }
+            $pipeCount = substr_count($input, "|");
+            $ampCount = substr_count($input, "&");
 
-        $pipeCount = substr_count($input, "|");
-        $ampCount = substr_count($input, "&");
+            if ($pipeCount == 0 && $ampCount == 0) {
+                return Type::new($input);
+            } else if ($ampCount == 0) {
+                return TypeUnion::tryParseTypeName($input);
+            }
 
-        if ($pipeCount == 0 && $ampCount == 0) {
-            return (self::$typeNameCache[$input] = Type::new($input));
-        } else if ($ampCount == 0) {
-            return (self::$typeNameCache[$input] = TypeUnion::tryParse($input));
-        }
-
-        throw new NotImplementedException();
+            throw new NotImplementedException();
+        }, "ITypeHint::create");
     }
 
     /**
@@ -86,41 +82,31 @@ final class TypeHintFactory implements ITryParse{
      * 
      * @return ITypeHint|null
      */
-    public static function tryParse(string $input): ?ITypeHint {
+    public static function tryParseTypeName(string $input): ?ITypeHint {
         if (empty($input = trim($input))) {
             return null;
         }
 
-        if (isset(self::$typeNameCache[$input])) {
-            return self::$typeNameCache[$input];
-        }
-
-        $input = str_replace("?", "null|" , $input);
-
-        $pipeCount = substr_count($input, "|");
-        $ampCount = substr_count($input, "&");
-
-        if ($pipeCount == 0 && $ampCount == 0) {
+        return Caching::getWithSet($input,function() use ($input) {
             if (in_array($input, SpecialType::SPECIAL_TYPES)) {
-                
-                return (self::$typeNameCache[$input] = SpecialType::new($input));
+                return SpecialType::tryParseTypeName($input);
             }
 
-            return (self::$typeNameCache[$input] = Type::new($input));
-        } else if ($ampCount == 0) {
-            
-            return (self::$typeNameCache[$input] = TypeUnion::tryParse($input));
-        } else if ($pipeCount == 0) {
-            
-            return (self::$typeNameCache[$input] = TypeIntersection::tryParse($input));
-        }
+            $input = str_replace("?", "null|" , $input);
 
-        throw new NotImplementedException();
-    }
+            $pipeCount = substr_count($input, "|");
+            $ampCount = substr_count($input, "&");
 
+            if ($pipeCount == 0 && $ampCount == 0) {
+                return Type::tryParseTypeName($input);
+            } else if ($ampCount == 0) {
+                return TypeUnion::tryParseTypeName($input);
+            } else if ($pipeCount == 0) {
+                return TypeIntersection::tryParseTypeName($input);
+            }
 
-    public static function optional(... $types): TypeUnion {
-        return TypeUnion::create(... [... $types, "void"]);
+            return null;
+        }, "ITypeHint::create");
     }
 
     /**
@@ -159,7 +145,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function undefined(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("undefined|null") : SpecialType::tryParse("undefined");
+        return $nullable ? TypeUnion::tryParseTypeName("undefined|null") : SpecialType::tryParseTypeName("undefined");
     }
 
     /**
@@ -172,7 +158,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function mixed(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("mixed|null") : SpecialType::tryParse("mixed");
+        return $nullable ? TypeUnion::tryParseTypeName("mixed|null") : SpecialType::tryParseTypeName("mixed");
     }
 
     /**
@@ -185,7 +171,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function keyTypes(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("int|string|null") : TypeUnion::tryParse("int|string");
+        return $nullable ? TypeUnion::tryParseTypeName("int|string|null") : TypeUnion::tryParseTypeName("int|string");
     }
 
     /**
@@ -198,7 +184,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function void(): ITypeHint {
-        return SpecialType::tryParse("void");
+        return SpecialType::tryParseTypeName("void");
     }
 
     /**
@@ -211,7 +197,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function object(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("object|null") : SpecialType::tryParse("object");
+        return $nullable ? TypeUnion::tryParseTypeName("object|null") : SpecialType::tryParseTypeName("object");
     }
 
     /**
@@ -224,7 +210,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function resource(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("resource|null") : SpecialType::tryParse("resource");
+        return $nullable ? TypeUnion::tryParseTypeName("resource|null") : SpecialType::tryParseTypeName("resource");
     }
 
     /**
@@ -238,7 +224,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function class(bool $nullable = false, ?string $className = null): ITypeHint {
-        return $nullable ? TypeUnion::tryParse(($className ?? "class") . "|null") : (
+        return $nullable ? TypeUnion::tryParseTypeName(($className ?? "class") . "|null") : (
             is_null($className) ? SpecialType::class() : Type::class($className)
         );
     }
@@ -254,7 +240,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function interface(bool $nullable = false, ?string $interfaceName = null): ITypeHint {
-        return $nullable ? TypeUnion::tryParse(($interfaceName ?? "interface") . "|null") : (
+        return $nullable ? TypeUnion::tryParseTypeName(($interfaceName ?? "interface") . "|null") : (
             is_null($interfaceName) ? SpecialType::interface() : Type::interface($interfaceName)
         );
     }
@@ -270,7 +256,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function trait(bool $nullable = false, ?string $traitName = null): ITypeHint {
-        return $nullable ? TypeUnion::tryParse(($traitName ?? "trait") . "|null") : (
+        return $nullable ? TypeUnion::tryParseTypeName(($traitName ?? "trait") . "|null") : (
             is_null($traitName) ? SpecialType::trait() : Type::trait($traitName)
         );
     }
@@ -286,7 +272,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function enum(bool $nullable = false, ?string $enumName = null): ITypeHint {
-        return $nullable ? TypeUnion::tryParse(($enumName ?? "enum") . "|null") : (
+        return $nullable ? TypeUnion::tryParseTypeName(($enumName ?? "enum") . "|null") : (
             is_null($enumName) ? SpecialType::enum() : Type::enum($enumName)
         );
     }
@@ -299,7 +285,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function null(): ITypeHint {
-        return Type::tryParse("null");
+        return Type::tryParseTypeName("null");
     }
 
     /**
@@ -312,7 +298,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function array(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("array|null") : Type::array();
+        return $nullable ? TypeUnion::tryParseTypeName("array|null") : Type::array();
     }
 
     /**
@@ -325,7 +311,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function bool(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("bool|null") : Type::bool();
+        return $nullable ? TypeUnion::tryParseTypeName("bool|null") : Type::bool();
     }
 
     /**
@@ -338,7 +324,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function float(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("float|null") : Type::float();
+        return $nullable ? TypeUnion::tryParseTypeName("float|null") : Type::float();
     }
 
     /**
@@ -351,7 +337,7 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function int(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("int|null") : Type::int();
+        return $nullable ? TypeUnion::tryParseTypeName("int|null") : Type::int();
     }
 
     /**
@@ -364,6 +350,6 @@ final class TypeHintFactory implements ITryParse{
      * @throws InvalidArgumentException
      */
     public static function string(bool $nullable = false): ITypeHint {
-        return $nullable ? TypeUnion::tryParse("string|null") : Type::string();
+        return $nullable ? TypeUnion::tryParseTypeName("string|null") : Type::string();
     }
 }

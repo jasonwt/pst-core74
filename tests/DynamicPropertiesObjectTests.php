@@ -15,7 +15,7 @@ use Traversable;
 require_once(__DIR__ . "/../vendor/autoload.php");
 
 Should::executeTests(function() {
-    echo "no tests defined.\n";
+    
     // class TestDynamicPropertiesObject extends DynamicPropertiesObject {
     //     public function __construct(iterable $propertyValues = []) {
             

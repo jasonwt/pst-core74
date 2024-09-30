@@ -26,7 +26,7 @@ abstract class EqualityComparer extends CoreObject implements IEqualityComparer 
                 };
                 
 
-                $this->equals = Func::new($compareFunc, $this->T, $this->TOther, TypeHintFactory::tryParse("bool"));
+                $this->equals = Func::new($compareFunc, $this->T, $this->TOther, TypeHintFactory::tryParseTypeName("bool"));
             }
 
             public function equals($x, $y): bool {

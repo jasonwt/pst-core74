@@ -25,6 +25,10 @@ trait EnumerableLinqTrait {
         return Linq::any($this, $predicate);
     }
 
+    public function append(iterable $source, $element, $keyValue = null): IEnumerable {
+        return Linq::append($this, $source, $element, $keyValue);
+    }
+
     public function contains($item): bool {
         return Linq::contains($this, $item);
     }
@@ -53,12 +57,28 @@ trait EnumerableLinqTrait {
         return Linq::firstKeyOrDefault($this, $predicate);
     }
 
+    public function groupBy(Closure $keySelector): IEnumerable {
+        return Linq::groupBy($this, $keySelector);
+    }
+
     public function iterationCount(Closure $predicate): int {
         return Linq::iterationCount($this, $predicate);
     }
 
+    public function isEmpty(): bool {
+        return count($this) === 0;
+    }
+
+    public function join(string $separator = ""): string {
+        return Linq::join($this, $separator);
+    }
+
     public function keys(?Closure $predicate = null): IEnumerable {
         return Linq::keys($this, $predicate);
+    }
+
+    public function keyMap(?Closure $keySelector = null, $TResult = null): IEnumerable {
+        return Linq::keyMap($this, $keySelector, $TResult);
     }
 
     public function last(?Closure $predicate = null) {
@@ -77,8 +97,8 @@ trait EnumerableLinqTrait {
         return Linq::lastKeyOrDefault($this, $predicate);
     }
 
-    public function select(?Closure $selector, ?Closure $keySelector = null, ?ITypeHint $T = null, ?ITypeHint $TKey = null): IEnumerable {
-        return Linq::select($this, $selector, $keySelector, $T, $TKey);
+    public function select(?Closure $selector, ?Closure $keySelector = null): IEnumerable {
+        return Linq::select($this, $selector, $keySelector);
     }
 
     public function sequenceEqual(iterable $other, ?IEqualityComparer $equalityComparer = null): bool {

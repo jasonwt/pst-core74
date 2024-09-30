@@ -31,7 +31,7 @@ final class Settings {
             }
 
             public function T(): ITypeHint {
-                return TypeHintFactory::tryParse("mixed");
+                return TypeHintFactory::tryParseTypeName("mixed");
             }
         };
     }

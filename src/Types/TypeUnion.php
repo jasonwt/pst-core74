@@ -5,14 +5,11 @@ declare(strict_types=1);
 namespace Pst\Core\Types;
 
 use Pst\Core\CoreObject;
-use Pst\Core\Interfaces\ITryParse;
+use Pst\Core\Caching\Caching;
 
 use InvalidArgumentException;
 
-class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
-    private static array $typeNameCache = [];
-    private static array $isAssignableCache = [];
-    
+class TypeUnion extends CoreObject implements ITypeHint {
     private array $types = [];
     private string $fullName = "";
 
@@ -36,7 +33,7 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
                     throw new InvalidArgumentException("Empty type name provided");
                 }
 
-                $type = (self::$typeNameCache[$type] ??= TypeHintFactory::new($type));
+                $type = TypeHintFactory::tryParseTypeName($type);
             }
 
             if ($type instanceof Type || $type instanceof SpecialType) {
@@ -56,6 +53,10 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
         ksort($this->types);
 
         $this->fullName = implode("|", array_keys($this->types));
+    }
+
+    public function typeGroup(): string {
+        return TypeUnion::class;
     }
 
     /**
@@ -99,41 +100,35 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
 
         $isAssignableCacheKey = $this->fullName . "~" . $fromTypeName;
 
-        if (isset(static::$isAssignableCache[$isAssignableCacheKey])) {
-            return static::$isAssignableCache[$isAssignableCacheKey];
-        }
-
-        if ($this->fullName === $fromTypeName) {
-            return (self::$isAssignableCache[$isAssignableCacheKey] = true);
-        }
-
-        else if ($fromType instanceof TypeIntersection) {
-            foreach ($fromType->getTypes() as $fromSubTypeName => $fromSubType) {
-                // fromSubType can not be TypeIntersection
-                if (!$this->isAssignableFrom($fromSubType)) {
-                    return (self::$isAssignableCache[$isAssignableCacheKey] = false);
+        return Caching::getWithSet($isAssignableCacheKey, function() use ($fromType, $fromTypeName, $isAssignableCacheKey) {
+            if ($this->fullName === $fromTypeName) {
+                return true;
+            } else if ($fromType instanceof TypeIntersection) {
+                foreach ($fromType->getTypes() as $fromSubTypeName => $fromSubType) {
+                    if (!$this->isAssignableFrom($fromSubType)) {
+                        return false;
+                    }
                 }
+
+                return true;
+            } else if ($fromType instanceof SpecialType || $fromType instanceof Type) {
+                foreach ($this->types as $typeName => $type) {
+                    if ($typeName === $fromTypeName || $type->isAssignableFrom($fromType)) {
+                        return true;
+                    }
+                }
+            } else if ($fromType instanceof TypeUnion) {
+                foreach ($fromType->getTypes() as $fromSubTypeName => $fromSubType) {
+                    if ($this->isAssignableFrom($fromSubType)) {
+                        return true;
+                    }
+                }
+            } else {
+                throw new InvalidArgumentException("Invalid fromType: '" . gettype($fromType) . "' provided.");
             }
 
-            return true;
-        } else if ($fromType instanceof SpecialType || $fromType instanceof Type) {
-            foreach ($this->types as $typeName => $type) {
-                if ($typeName === $fromTypeName || $type->isAssignableFrom($fromType)) {
-                    return (self::$isAssignableCache[$isAssignableCacheKey] = true);
-                }
-            }
-        } else if ($fromType instanceof TypeUnion) {            
-            foreach ($fromType->getTypes() as $fromSubTypeName => $fromSubType) {
-                // fromSubType can not be TypeUnion
-                if ($this->isAssignableFrom($fromSubType)) {
-                    return (self::$isAssignableCache[$isAssignableCacheKey] = true);
-                }
-            }
-        } else {
-            throw new InvalidArgumentException("Invalid fromType: '" . gettype($fromType) . "' provided.");
-        }
-
-        return (self::$isAssignableCache[$isAssignableCacheKey] = false);
+            return false;
+        }, "ITypeHint::isAssignableFrom");
     }
 
     /**
@@ -153,6 +148,11 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
     public function __toString(): string {
         return $this->fullName;
     }
+
+    public function toString(): string {
+        return $this->fullName();
+    }
+    
     /**
      * Creates a create TypeUnion instance
      * 
@@ -167,12 +167,14 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
             if (is_string($type)) {
                 if (empty($type = trim($type))) {
                     throw new InvalidArgumentException("Empty type name provided");
-                } else if ($type[0] === "?") {
-                    $acc["null"] ??= Type::null();
+                }
+                
+                if ($type[0] === "?") {
+                    $acc["null"] ??= TypeHintFactory::new("null");
                     $type = substr($type, 1);
                 }
 
-                $type = (self::$typeNameCache[$type] ??= TypeHintFactory::new($type));
+                $type = TypeHintFactory::new($type);
             } else if (!$type instanceof ITypeHint) {
                 throw new InvalidArgumentException("Invalid type: '" . gettype($type) . "' provided.");
             }
@@ -181,6 +183,7 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
 
             return $acc;
         }, []);
+
         return new TypeUnion(...array_values($types));
     }
 
@@ -191,34 +194,29 @@ class TypeUnion extends CoreObject implements ITypeHint, ITryParse {
      * 
      * @return TypeUnion|null
      */
-    public static function tryParse(string $type): ?TypeUnion {
-        if (empty($type = trim($type))) {
+    public static function tryParseTypeName(string $typeName): ?TypeUnion {
+        if (empty($type = trim($typeName))) {
             return null;
         }
 
-        if (isset(self::$typeNameCache[$type])) {
-            return self::$typeNameCache[$type];
-        }
+        return Caching::getWithSet($type, function() use ($type) {
+            $types = array_reduce(explode("|", str_replace("?", "null|", $type)), function ($acc, $type) {
+                if ($acc === null) {
+                    return null;
+                } else if (($type = TypeHintFactory::tryParseTypeName($type)) === null) {
+                    return null;
+                }
 
-        $types = array_reduce(explode("|", str_replace("?", "null|", $type)), function ($acc, $type) {
-            if ($acc === null) {
+                $acc[(string) $type] ??= $type;
+
+                return $acc;
+            }, []);
+
+            if ($type === null || count($types) < 2) {
                 return null;
             }
 
-            if (($type = TypeHintFactory::tryParse($type)) === null) {
-                return null;
-            }
-
-            $acc[(string) $type] ??= $type;
-
-            return $acc;
-        }, []);
-
-        if ($type === null || count($types) < 2) {
-            return null;
-        }
-
-        $typeNameCache[$type] = new TypeUnion(...array_values($types));
-        return $typeNameCache[$typeNameCache[$type]->fullName()] ??= $typeNameCache[$type];
+            return new TypeUnion(...array_values($types));
+        }, "ITypeHint::create");
     }
 }

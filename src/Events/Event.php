@@ -57,7 +57,7 @@ class Event implements IEvent {
             throw new InvalidArgumentException("The handler already exists.");
         }
 
-        Action::new($handler, ...array_map(fn($v) => TypeHintFactory::tryParse($v), $this->eventArgumentTypes));
+        Action::new($handler, ...array_map(fn($v) => TypeHintFactory::tryParseTypeName($v), $this->eventArgumentTypes));
 
         $this->handlers[$handlerId] = [
             "handler" => $handler,

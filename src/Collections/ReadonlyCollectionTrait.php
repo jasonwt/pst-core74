@@ -95,11 +95,11 @@ trait ReadonlyCollectionTrait {
 
         if (is_array($items)) {
             foreach ($items as $key => $value) {
-                if ($this->T !== null && $this->validateSourceKeys && !($keyType = Type::typeOf($key))->isAssignableTo($TKey)) {
+                if ($this->T !== null && $this->validateSourceKeys && !($keyType = Type::typeOf($key))->isAssignableTo($TKey ?? TypeHintFactory::keyTypes())) {
                     throw new TypeError("Key type: {$keyType} is not assignable to key type {$TKey}");
                 }
 
-                if ($this->T !== null && $this->validateSourceValues && !($valueType = Type::typeOf($value))->isAssignableTo($T)) {
+                if ($this->T !== null && $this->validateSourceValues && !($valueType = Type::typeOf($value))->isAssignableTo($T ?? TypeHintFactory::undefined())) {
                     throw new TypeError("Value type: {$valueType} is not assignable to type {$T}");
                 }
 

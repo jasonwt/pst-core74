@@ -7,6 +7,7 @@ namespace Pst\Core\Enumerable;
 
 use Pst\Core\Types\ITypeHint;
 use Pst\Core\Interfaces\ICoreObject;
+use Pst\Core\Interfaces\IShouldTypeCheck;
 use Pst\Core\Enumerable\Linq\IEnumerableLinq;
 
 use Iterator;

@@ -19,6 +19,8 @@ use InvalidArgumentException;
 trait EnumerableTrait {
     use EnumerableLinqTrait {}
 
+    private static bool $shouldTypeCheck = true;
+
     private ITypeHint $T;
     private ITypeHint $TKey;
     private Iterator $iterator;
@@ -39,6 +41,14 @@ trait EnumerableTrait {
             if ($iterator instanceof IEnumerable) {
                 $T ??= $iterator->T();
                 $TKey ??= $iterator->TKey();
+
+                if (!$T->isAssignableFrom($iterator->T())) {
+                    throw new TypeError("{$T} is not assignable to {$iterator->T()}");
+                }
+
+                if (!$TKey->isAssignableFrom($iterator->TKey())) {
+                    throw new TypeError("{$TKey} is not assignable to {$iterator->TKey()}");
+                }
             }
 
             while ($iterator instanceof IteratorAggregate) {

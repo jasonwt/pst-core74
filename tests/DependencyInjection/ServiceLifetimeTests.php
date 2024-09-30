@@ -11,8 +11,8 @@ use Pst\Core\DependencyInjection\ServiceLifetime;
 use Pst\Testing\Should;
 
 Should::executeTests(function() {
-    Should::equal("Transient", (string) ServiceLifetime::Transient());
-    Should::equal("Singleton", (string) ServiceLifetime::Singleton());
+    Should::equal("ServiceLifetime::Transient", (string) ServiceLifetime::Transient());
+    Should::equal("ServiceLifetime::Singleton", (string) ServiceLifetime::Singleton());
 
     Should::beTrue(ServiceLifetime::Transient() == ServiceLifetime::Transient());
     Should::beFalse(ServiceLifetime::Transient() == ServiceLifetime::Singleton());

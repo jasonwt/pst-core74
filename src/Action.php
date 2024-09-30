@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
-use Pst\Core\Types\Type;
+use Pst\Core\Types\SpecialType;
 use Pst\Core\Types\ITypeHint;
 
 use Pst\Core\Types\TypedClosureTrait;
@@ -31,9 +31,6 @@ final class Action {
         getReturnTypeHint as public;
         getParameterTypeHints as public;
         getParameterTypeHint as public;
-        closureTypeInfo as public;
-        enableReturnTypeValidation as private;
-        disableReturnTypeValidation as private;
     }
 
     // I am setting this to private because I want an opertunity to monitor a global "Build Type" property that can 
@@ -43,11 +40,11 @@ final class Action {
             throw new InvalidArgumentException("At least one type hint must be specified for the required return type.");
         }
 
-        $this->__TypedClosureTrait__construct($closure, Type::void(), ...$tClosureParameterTypeHints);
+        $this->__TypedClosureTrait__construct($closure, SpecialType::void(), ...$tClosureParameterTypeHints);
     }
 
     // I would much rather return Closure|Func here but php 7.4 doesn't support union types
     public static function new(Closure $closure, ITypeHint ...$tClosureParameterTypeHints) {
-        return !static::getParameterValidation() ? $closure : new self($closure, ...$tClosureParameterTypeHints);
+        return new self($closure, ...$tClosureParameterTypeHints);
     }
 }

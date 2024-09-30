@@ -5,7 +5,10 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
+use Pst\Core\Caching\Caching;
+use Pst\Core\Interfaces\IToString;
 use Pst\Core\Types\Type;
+use ReflectionProperty;
 
 /**
  * A trait that provides common functionality for objects.
@@ -19,18 +22,28 @@ use Pst\Core\Types\Type;
  * @see CoreObject
  */
 trait CoreObjectTrait {
-    private static ?string $objectNamespace = null;
-    private static ?string $objectClassName = null;
+    
+    protected array $coreObjectCache = [];
 
-    private array $coreObjectTraitCache = [];
     private ?int $coreObjectTraitHashCode = null;
-
-    public static function getNamespace(): string {
-        return static::$objectNamespace ??= implode('\\', array_slice(explode('\\', static::class), 0, -1));
+    
+    public static function classNamespace(): string {
+        return Caching::getWithSet(
+            static::class . ":" . __FUNCTION__, 
+            function() {
+                return implode('\\', array_slice(explode('\\', static::class), 0, -1));
+            }
+        );
+        
     }
 
-    public static function getClassName(): string {
-        return static::$objectClassName ??= array_slice(explode('\\', static::class), -1)[0];
+    public static function className(): string {
+        return Caching::getWithSet(
+            static::class . ":" . __FUNCTION__, 
+            function() {
+                return array_slice(explode('\\', static::class), -1)[0];
+            }
+        );
     }
 
     public function getObjectId(): int {
@@ -52,19 +65,11 @@ trait CoreObjectTrait {
      * @return int The hash code of the object.
      */
     public function getHashCode(): int {
-        return ($this->coreObjectTraitHashCode ??= hexdec(substr(hash("sha256", serialize($this)), 0, PHP_INT_SIZE * 2)));
-    }
-
-    /**
-     * Gets the string representation of the object.
-     * 
-     * @return string 
-     */
-    public function __toString(): string {
-        return print_r($this, true);
-    }
-
-    public function toString(): string {
-        return $this->__toString();
+        return Caching::getWithSet(
+            static::class . ":" . __FUNCTION__, 
+            function() {
+                return hexdec(substr(hash("sha256", serialize($this)), 0, PHP_INT_SIZE * 2));
+            }
+        );
     }
 }

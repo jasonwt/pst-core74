@@ -17,6 +17,7 @@ use Closure;
 interface IEnumerableLinq {
     public function all(Closure $predicate): bool;
     public function any(Closure $predicate): bool;
+    public function append(iterable $source, $element, $keyValue = null): IEnumerable;
     public function count(?Closure $predicate = null): int;
     public function contains($value): bool;
     public function containsKey($key): bool;
@@ -24,13 +25,17 @@ interface IEnumerableLinq {
     public function firstKey(?Closure $predicate = null);
     public function firstOrDefault(?Closure $predicate = null);
     public function firstKeyOrDefault(?Closure $predicate = null);
+    public function groupBy(Closure $keySelector): IEnumerable;
     public function iterationCount(Closure $predicate): int;
+    public function isEmpty(): bool;
+    public function join(string $separator = ""): string;
     public function keys(?Closure $predicate = null): IEnumerable;
+    public function keyMap(?Closure $keySelector = null, $TResult = null): IEnumerable;
     public function last(?Closure $predicate = null);
     public function lastKey(?Closure $predicate = null);
     public function lastOrDefault(?Closure $predicate = null);
     public function lastKeyOrDefault(?Closure $predicate = null);
-    public function select(?Closure $selector, ?Closure $keySelector = null, ?ITypeHint $T = null, ?ITypeHint $TKey = null): IEnumerable;
+    public function select(?Closure $selector, ?Closure $keySelector = null): IEnumerable;
     public function sequenceEqual(iterable $other, ?IEqualityComparer $equalityComparer = null): bool;
     public function single(Closure $predicate); // not implemented
     public function singleOrDefault(?Closure $predicate = null); // not implemented

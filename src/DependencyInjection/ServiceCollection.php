@@ -13,7 +13,7 @@ use Pst\Core\Collections\CollectionTrait;
 use Pst\Core\Exceptions\NotImplementedException;
 
 use Pst\Core\Enumerable\IEnumerable;
-use Pst\Core\Enumerable\Enumerator;
+use Pst\Core\Enumerable\Enumerable;
 use Pst\Core\Enumerable\ImmutableEnumerableLinqTrait;
 use Pst\Core\Collections\Collection;
 use Pst\Core\Collections\ICollection;

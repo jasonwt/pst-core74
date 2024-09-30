@@ -4,200 +4,134 @@ declare(strict_types=1);
 
 namespace Pst\Core\Types;
 
+use Pst\Core\CoreObject;
 use Pst\Core\Types\Type;
 use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Types\ITypeHint;
-
-use Pst\Core\Runtime\Settings;
-use Pst\Core\Runtime\Traits\RuntimeSettingsTrait;
+use Pst\Core\Traits\ShouldTypeCheckTrait;
 
 use Closure;
 use ReflectionFunction;
 use InvalidArgumentException;
 
 trait TypedClosureTrait {
-    use RuntimeSettingsTrait;
+    use ShouldTypeCheckTrait;
 
-    private Closure $TypedClosureTrait__closure;
-    private string $TypedClosureTrait__validReturnTypes;
-    private array $TypedClosureTrait__validParametersTypes = [];
+    private static bool $strictTypes = false;
 
-    /**
-     * Initializes the runtime settings.
-     * 
-     * @return void
-     */
-    protected static function initRuntimeSettings(): void {
-        Settings::tryRegisterSetting(static::class . "::returnValueValidation", true, TypeHintFactory::bool());
-        Settings::tryRegisterSetting(static::class . "::parameterValidation", true, TypeHintFactory::bool());
+    public static function enableStrictTypes(): void {
+        static::$strictTypes = true;
     }
 
-    /**
-     * Returns if return type validation is enabled.
-     * 
-     * @return bool The return type validation setting.
-     */
-    public static function getReturnTypeValidation(): bool {
-        return static::getRuntimeSetting("returnValueValidation");
+    public static function disableStrictTypes(): void {
+        static::$strictTypes = false;
     }
 
-    /**
-     * Disables return type validation
-     * 
-     * @return void
-     */
-    public static function disableReturnTypeValidation(): void {
-        static::setRuntimeSetting("returnValueValidation", false);
+    public static function isStrictTypesEnabled(): bool {
+        return static::$strictTypes;
     }
 
-    /**
-     * Enables return type validation
-     * 
-     * @return void
-     */
-    public static function enableReturnTypeValidation(): void {
-        static::setRuntimeSetting("returnValueValidation", true);
-    }
+    private Closure $typedClosure;
 
-    /**
-     * Returns if parameter validation is enabled.
-     * 
-     * @return bool The parameter validation setting.
-     */
-    public static function getParameterValidation(): bool {
-        return static::getRuntimeSetting("parameterValidation");
-    }
+    private ITypeHint $validReturnType;
+    private array $validParameterTypes = [];
 
-    /**
-     * Disables parameter validation
-     * 
-     * @return void
-     */
-    public static function disableParameterValidation(): void {
-        static::setRuntimeSetting("parameterValidation", false);
-    }
+    private int $minRequiredParameters = 0;
 
-    /**
-     * Enables parameter validation
-     * 
-     * @return void
-     */
-    public static function enableParameterValidation(): void {
-        static::setRuntimeSetting("parameterValidation", true);
-    }
-
-    /**
-     * Returns if any validation is enabled.
-     * 
-     * @return bool The validation setting.
-     */
-    public static function getValidation(): bool {
-        return static::getReturnTypeValidation() || static::getParameterValidation();
-    }
-
-    /**
-     * Disables all validation
-     * 
-     * @return void
-     */
-    public static function disableValidation(): void {
-        static::disableReturnTypeValidation();
-        static::disableParameterValidation();
-    }
-
-    /**
-     * Enables all validation
-     * 
-     * @return void
-     */
-    public static function enableValidation(): void {
-        static::enableReturnTypeValidation();
-        static::enableParameterValidation();
-    }
+    private bool $typeCheckReturnType = false;
+    private bool $typeCheckParameters = false;
 
     /**
      * Initializes a new instance of the TypedClosureTrait class.
      * 
      * @param Closure $closure The closure.
      * @param ITypeHint $validClosureReturnTypes The valid return type hint of the closure.
-     * @param ITypeHint ...$validClosureParametersTypes The valid parameter type hints of the closure.
+     * @param null|ITypeHint ...$validClosureParametersTypes The valid parameter type hints of the closure.
      * 
      * @throws InvalidArgumentException
      */
-    public function __construct(Closure $closure, ITypeHint $validClosureReturnTypes, ITypeHint ...$validClosureParametersTypes) {
-        //print_r(func_get_args());
-        $this->TypedClosureTrait__closure = $closure;
+    private function __construct(Closure $closure, ITypeHint $validClosureReturnTypes, ?ITypeHint ...$validClosureParametersTypes) {
+        $this->typedClosure = $closure;
 
-        $validateReturnType = static::getReturnTypeValidation();
-        $validateParameters = static::getParameterValidation();
+        list ($closureReturnType, $closureParameterTypes) = array_values(self::internalClosureTypeInfo($closure));
 
-        list ($closureReturnTypeHintName, $closureParametersTypeHintNames) = array_values(self::closureTypeInfo($closure));
-
-        $this->TypedClosureTrait__validReturnTypes = (string) $validClosureReturnTypes;
-        $this->TypedClosureTrait__validParametersTypes = array_map(fn($v) => $v->fullName(), $validClosureParametersTypes);
-
-        if ($validateReturnType) {
-            if ($this->TypedClosureTrait__validReturnTypes !== "undefined" && $this->TypedClosureTrait__validReturnTypes !== $closureReturnTypeHintName) {
-                if ($this->TypedClosureTrait__validReturnTypes === "void" && $closureReturnTypeHintName !== "undefined") {
-                    throw new InvalidArgumentException("The valid return type hint must be 'void'.");
-                }
-
-                if ($closureReturnTypeHintName !== "undefined") {
-                    $closureReturnTypeHint = TypeHintFactory::tryParse($closureReturnTypeHintName);
-
-                    if ($closureReturnTypeHintName === "void" || $this->TypedClosureTrait__validReturnTypes === "void" || !$validClosureReturnTypes->isAssignableFrom($closureReturnTypeHint)) {
-                        throw new InvalidArgumentException("The closure return type hint: '{$closureReturnTypeHintName}' is not assignable to type hint: '{$this->TypedClosureTrait__validReturnTypes}'.");
-                    }
-                }
+        if ($validClosureReturnTypes == "void") {
+            if ($closureReturnType != "void" && $closureReturnType != "undefined") {
+                throw new InvalidArgumentException("The valid return type hint must be 'void'.");
             }
+        } else if ($validClosureReturnTypes == "undefined") {
+            if (($validClosureReturnTypes = $closureReturnType) == "undefined" && static::$strictTypes) {
+                throw new InvalidArgumentException("A return type must be specified by the closure or the validClosureReturnTypes parameter.");
+            }
+        } else if ($closureReturnType == "undefined") {
+            $this->typeCheckReturnType = true;
+
+        } else if (!$closureReturnType->isAssignableFrom($validClosureReturnTypes)) {
+            throw new InvalidArgumentException("The closure return type hint: '{$closureReturnType}' is not assignable to type hint: '{$validClosureReturnTypes}'.");
         }
 
-        
-
-        if (count($closureParametersTypeHintNames) > count($validClosureParametersTypes)) {
-            throw new InvalidArgumentException("The closure has '" . count($closureParametersTypeHintNames) . "' parameters, but '" . count($validClosureParametersTypes) . "' type hints were specified.");
+        if (count($validClosureParametersTypes) < count($closureParameterTypes)) {
+            throw new InvalidArgumentException("The closure has '" . count($closureParameterTypes) . "' parameters, but only '" . count($validClosureParametersTypes) . "' parameter types were specified.");
         }
 
-        if ($validateParameters) {
-            $closureParameterNames = array_keys($closureParametersTypeHintNames);
+        $this->validReturnType = $validClosureReturnTypes;
 
-            for ($i = 0; $i < count($validClosureParametersTypes); $i ++) {
-                $closureParameterName = $closureParameterNames[$i] ?? "validClosureParameterTypeHintName Index: $i";
+        $i = 0;
 
-                if (($validClosureParameterTypeHintName = $this->TypedClosureTrait__validParametersTypes[$i]) === "void") {
-                    throw new InvalidArgumentException("The valid closure parameter type hint for property: '$closureParameterName' can not be only void.");
-                }
+        foreach ($closureParameterTypes as $closureParameterName => $closureParameterType) {
+            $validParameterType = $validClosureParametersTypes[$i];
 
-                $validClosureParameterTypeHint = TypeHintFactory::tryParse($validClosureParameterTypeHintName);
-
-                
-
-                if ($i >= count($closureParametersTypeHintNames)) {
-                    if ($validClosureParameterTypeHint->isAssignableFrom(TypeHintFactory::void())) {
-                        continue;
-                    }
-
-                    throw new InvalidArgumentException("The closure has '" . count($closureParametersTypeHintNames) . "' parameters, but '" . count($validClosureParametersTypes) . "' type hints were specified.");
-                }
-
-                if (($closureParameterTypeHintName = $closureParametersTypeHintNames[$closureParameterNames[$i]]) === "void") {
-                    throw new InvalidArgumentException("The closure parameter type hint for property: '$closureParameterName' should not be void.");
-                }
-
-                
-
-                if ($validClosureParameterTypeHintName !== "undefined" && $validClosureParameterTypeHintName !== $closureParameterTypeHintName) {
-                    if ($closureParameterTypeHintName !== "undefined") {
-                        
-                        $closureParameterTypeHint = TypeHintFactory::tryParse($closureParameterTypeHintName);
-
-                        if (!$validClosureParameterTypeHint->isAssignableFrom($closureParameterTypeHint)) {
-                            throw new InvalidArgumentException("The valid closure parameter type: '{$closureParameterTypeHintName}' for property: '$closureParameterName' is not assignable to type hint: '{$validClosureParameterTypeHintName}'.");
-                        }
-                    }
-                }
+            if ($validParameterType === "void") {
+                throw new InvalidArgumentException("The specified valid parameter type for the provided closure parameter: '{$closureParameterName}' can not be void.");
             }
-        } 
+
+            if ($validParameterType instanceof TypedClosureOptionalParameter) {
+                if ($i < count($validClosureParametersTypes) - 1 && !$validClosureParametersTypes[$i + 1] instanceof TypedClosureOptionalParameter) {
+                    throw new InvalidArgumentException("Optionals parameters must the last parameter or followed by another optional parameter.");
+                }
+
+                $this->validParameterTypes[$closureParameterName] = $validParameterType;
+
+                $this->minRequiredParameters --;
+
+                continue;
+            }
+
+            if ($validParameterType == "undefined") {
+                if (($validParameterType = $closureParameterType) == "undefined" && static::$strictTypes) {
+                    throw new InvalidArgumentException("The closure parameter type for property: '$closureParameterName' should not be undefined.");
+                }
+            } else if ($closureParameterType == "undefined") {
+                $this->typeCheckParameters = true;
+
+                
+            } else if (!$closureParameterType->isAssignableFrom($validParameterType)) {
+                throw new InvalidArgumentException("The specified valid parameter type: '{$validParameterType}' for closure parameter: '{$closureParameterName}' is not assignable to the provided closure parameter type: '{$closureParameterType}'.");    
+            }
+
+            $this->validParameterTypes[$closureParameterName] = $validParameterType;
+
+            $i ++;
+        }
+
+        while ($i < count($validClosureParametersTypes)) {
+            $validParameterType = $validClosureParametersTypes[$i];
+            $closureParameterName = "optional" . ($i - $this->minRequiredParameters + 1);
+
+            if ($validParameterType === "void") {
+                throw new InvalidArgumentException("The specified valid parameter type for the provided closure parameter: 'optional" . ($i - $this->minRequiredParameters + 1) . "' can not be void.");
+            }
+
+            if (!$validParameterType instanceof TypedClosureOptionalParameter) {
+                throw new InvalidArgumentException("The closure has '" . count($closureParameterTypes) . "' parameters, but '" . count($validClosureParametersTypes) . "' type hints were specified.");
+            } else if ($i < count($validClosureParametersTypes) - 1 && !$validClosureParametersTypes[$i + 1] instanceof TypedClosureOptionalParameter) {
+                throw new InvalidArgumentException("Optionals parameters must be the last parameter or followed by another optional parameter.");
+            }
+
+            $this->validParameterTypes[$closureParameterName] = $validParameterType;
+
+            $i ++;
+        }
     }
 
     /**
@@ -210,42 +144,62 @@ trait TypedClosureTrait {
      * @throws InvalidArgumentException
      */
     public function __invoke(...$args) {
-        if (count($args) !== count($this->TypedClosureTrait__validParametersTypes)) {
-            throw new InvalidArgumentException("The number of invoke arguments: '" . count($args) . "' does not match the number of parameters: '" . count($this->TypedClosureTrait__validParametersTypes) . "'.");
+        $argsCount = count($args);
+
+        if ($argsCount < $this->minRequiredParameters || $argsCount > count($this->validParameterTypes)) {
+            throw new InvalidArgumentException("The number of invoke arguments: '" . $argsCount . "' is less than the minimum required parameters: '" . $this->minRequiredParameters . "'.");
         }
 
-        if (static::getParameterValidation()) {
-            $validParameterNames = array_keys($this->TypedClosureTrait__validParametersTypes);
+        $validateReturnType = $this->willValidateReturnType();
+        $validateParameters = $this->willValidateParameters();
 
-            foreach ($validParameterNames as $parameterIndex => $validParameterName) {
-                $validParameterTypes = TypeHintFactory::tryParse($this->TypedClosureTrait__validParametersTypes[$validParameterName]);
-                $parameter = $args[$parameterIndex];
+        if (!$validateParameters && !$validateReturnType) {
+            return ($this->typedClosure)(...$args);
+        }
 
-                $valueType = Type::typeOf($parameter);
+        if ($validateParameters) {
+            $i = 0;
 
-                if (!$validParameterTypes->isAssignableFrom($valueType)) {
-                    throw new InvalidArgumentException("The invoke parameter type: '" . $valueType->fullName() . "' for parameter: '$validParameterName' is not assignable to the type hint: '{$this->TypedClosureTrait__validParametersTypes[$validParameterName]}'.");
+            foreach ($this->validParameterTypes as $closureParameterName => $validParameterType) {
+                if ($i >= $argsCount) {
+                    break;
                 }
+
+                $invokeParameter = $args[$i];
+
+                $invokedParameterType = Type::typeOf($invokeParameter);
+
+                if (!$validParameterType->isAssignableFrom($invokedParameterType)) {
+                    throw new InvalidArgumentException("The invoke parameter type: '{$invokedParameterType}' for parameter: '$closureParameterName' is not assignable to the type hint: '{$validParameterType}'.");
+                }
+
+                $i ++;
             }
         }
 
-        $result = ($this->TypedClosureTrait__closure)(...$args);
+        $result = ($this->typedClosure)(...$args);
 
-        if ($this->TypedClosureTrait__validReturnTypes !== "void") {
-            if (!static::getReturnTypeValidation()) {
-                return $result;
+        if ($validateReturnType) {
+            $invokedReturnType = Type::typeOf($result);
+
+            if (!$this->validReturnType->isAssignableFrom($invokedReturnType)) {
+                throw new InvalidArgumentException("The invoke return type: '{$invokedReturnType}' is not assignable to the valid return type hint: '{$this->validReturnType}'.");
             }
-
-            $returnType = Type::typeOf($result);
-
-            $closureReturnType = TypeHintFactory::tryParse($this->TypedClosureTrait__validReturnTypes);
-
-            if (!$closureReturnType->isAssignableFrom($returnType)) {
-                throw new InvalidArgumentException("The invoke return type: '{$returnType}' is not assignable to the valid return type hint: '{$this->TypedClosureTrait__validReturnTypes}'.");
-            }
-            
-            return $result;
         }
+
+        return $result;
+    }
+
+    protected function getMinRequiredParameters(): int {
+        return $this->minRequiredParameters;
+    }
+
+    protected function willValidateReturnType(): bool {
+        return self::shouldTypeCheck() && $this->typeCheckReturnType;
+    }
+
+    protected function willValidateParameters(): bool {
+        return self::shouldTypeCheck() && $this->typeCheckParameters;
     }
 
     /**
@@ -254,7 +208,7 @@ trait TypedClosureTrait {
      * @return Closure The closure.
      */
     protected function getClosure(): Closure {
-        return $this->TypedClosureTrait__closure;
+        return $this->typedClosure;
     }
 
     /**
@@ -263,7 +217,7 @@ trait TypedClosureTrait {
      * @return array The parameter names of the closure.
      */
     protected function getParameterNames(): array {
-        return array_keys($this->TypedClosureTrait__validParametersTypes);
+        return array_keys($this->validParameterTypes);
     }
 
     /**
@@ -272,7 +226,7 @@ trait TypedClosureTrait {
      * @return ITypeHint The return type hint of the closure.
      */
     protected function getReturnTypeHint(): ITypeHint {
-        return TypeHintFactory::tryParse($this->TypedClosureTrait__validReturnTypes);
+        return $this->validReturnType;
     }
 
     /**
@@ -281,7 +235,7 @@ trait TypedClosureTrait {
      * @return array An array containing the return type hint and parameter type hints.
      */
     protected function getParameterTypeHints(): array {
-        return array_map(fn($v) => TypeHintFactory::tryParse($v), $this->TypedClosureTrait__validParametersTypes);
+        return $this->validParameterTypes;
     }
 
     /**
@@ -295,32 +249,25 @@ trait TypedClosureTrait {
      */
     protected function getParameterTypeHint($keyOrIndex): ITypeHint {
         if (is_string($keyOrIndex)) {
-            if (!isset($this->TypedClosureTrait__validParametersTypes[$keyOrIndex])) {
+            if (!isset($this->validParameterTypes[$keyOrIndex])) {
                 throw new InvalidArgumentException("Parameter '" . $keyOrIndex . "' does not exist.");
             }
 
-            return TypeHintFactory::tryParse($this->TypedClosureTrait__validParametersTypes[$keyOrIndex]);
+            return TypeHintFactory::tryParseTypeName($this->validParameterTypes[$keyOrIndex]);
         } else if (!is_int($keyOrIndex)) {
             throw new InvalidArgumentException("Parameter key must be an integer or string.");
         }
 
-        $parameterKeys = array_keys($this->TypedClosureTrait__validParametersTypes);
+        $parameterKeys = array_keys($this->validParameterTypes);
 
         if (!isset($parameterKeys[$keyOrIndex])) {
             throw new InvalidArgumentException("Parameter at index " . $keyOrIndex . " does not exist.");
         }
 
-        return TypeHintFactory::tryParse($this->TypedClosureTrait__validParametersTypes[$parameterKeys[$keyOrIndex]]);
+        return TypeHintFactory::tryParseTypeName($this->validParameterTypes[$parameterKeys[$keyOrIndex]]);
     }
 
-    /**
-     * Gets the return type hint and parameter type hints of the closure.
-     * 
-     * @param Closure $closure The closure.
-     * 
-     * @return array An array containing the return type hint and parameter type hints.
-     */
-    protected static function closureTypeInfo(Closure $closure): array {
+    protected static function internalClosureTypeInfo(Closure $closure): array {
         $results = [
             "returnTypeHint" => null,
             "parameterTypeHints" => []
@@ -329,36 +276,48 @@ trait TypedClosureTrait {
         $reflection = new ReflectionFunction($closure);
 
         if (!$reflection->hasReturnType()) {
-            $results["returnTypeHint"] = "undefined";
+            $results["returnTypeHint"] = TypeHintFactory::undefined();
         } else {
             $returnType = $reflection->getReturnType();
 
             if (method_exists($returnType, "getTypes")) {
-                $results["returnTypeHint"] = implode("|", array_map(fn($v) => call_user_func([$v, "getName"]), call_user_func([$returnType, "getTypes"])));
+                $results["returnTypeHint"] = TypeHintFactory::new(
+                    implode("|", array_map(fn($v) => call_user_func([$v, "getName"]), call_user_func([$returnType, "getTypes"])))
+                );
             } else {
-                $results["returnTypeHint"] = $returnType->getName() . ($returnType->allowsNull() ? "|null" : "");
+                $results["returnTypeHint"] = TypeHintFactory::new(
+                    $returnType->getName() . ($returnType->allowsNull() ? "|null" : "")
+                );
             }
         }
 
         $results["parameterTypeHints"] = array_reduce($reflection->getParameters(), function($parameters, $parameter) {
-            $parameterTypeNames = [];
+            $parameterTypes = [];
 
             if (!$parameter->hasType()) {
-                $parameterTypeNames = "undefined";
+                $parameterTypes = TypeHintFactory::undefined();
             } else {
                 $parameterType = $parameter->getType();
                 if (method_exists($parameterType, "getTypes")) {
-                    $parameterTypeNames = implode("|", array_map(fn($v) => call_user_func([$v, "getName"]), call_user_func([$parameterType, "getTypes"])));
+                    $parameterTypes = TypeHintFactory::new(
+                        implode("|", array_map(fn($v) => call_user_func([$v, "getName"]), call_user_func([$parameterType, "getTypes"])))
+                    );
                 } else {
-                    $parameterTypeNames = $parameterType->getName() . ($parameterType->allowsNull() ? "|null" : "");
+                    $parameterTypes = TypeHintFactory::new(
+                        $parameterType->getName() . ($parameterType->allowsNull() ? "|null" : "")
+                    );
                 }
             }
 
-            $parameters[$parameter->getName()] = $parameterTypeNames;
+            $parameters[$parameter->getName()] = $parameterTypes;
             
             return $parameters;
         }, []);
 
         return $results;
+    }
+
+    public static function optionalParameter(ITypeHint $typeHint): TypedClosureOptionalParameter {
+        return new TypedClosureOptionalParameter($typeHint);
     }
 }

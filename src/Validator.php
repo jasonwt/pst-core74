@@ -23,7 +23,7 @@ class Validator extends CoreObject {
             throw new InvalidArgumentException("Validator with name $name already exists");
         }
 
-        $this->validators[$name] = Func::new($validator, TypeHintFactory::mixed(), TypeHintFactory::tryParse("bool|string"));
+        $this->validators[$name] = Func::new($validator, TypeHintFactory::mixed(), TypeHintFactory::tryParseTypeName("bool|string"));
     }
 
     public function hasValidator(string $name): bool {

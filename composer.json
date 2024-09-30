@@ -10,7 +10,9 @@
             "Pst\\Core\\": "src/"
         },
         "files": [
-            "src/files/helper_functions.php"
+            "src/files/debugging.php",
+            "src/files/validate.php",
+            "src/files/enums.php"
         ]
     },
     "authors": [
@@ -30,6 +32,7 @@
     "require": {
         "php": ">=7.4,<8.0",
         "psr/container": "^2.0@dev",
-        "pst/testing": "*"
+        "pst/testing": "*",
+        "psr/cache": "^1.0"
     }
 }

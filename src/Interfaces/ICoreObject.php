@@ -16,13 +16,11 @@ use Pst\Core\Types\Type;
  * 
  * @since 1.0.0
  */
-interface ICoreObject extends IToString {
-    public static function getNamespace(): string;
-    public static function getClassName(): string;
+interface ICoreObject {
+    public static function classNamespace(): string;
+    public static function className(): string;
     
     public function getObjectId(): int;
     public function getType(): Type;
     public function getHashCode(): int;
-
-    public function __toString(): string;
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Pst\Core\Traits;
 
-use Pst\Core\Enumerable\Enumerator;
+use Pst\Core\Enumerable\Enumerable;
 use Pst\Core\Types\TypeHintFactory;
 use Pst\Core\Collections\IReadonlyCollection;
 use Pst\Core\Collections\ReadonlyCollection;
@@ -59,6 +59,6 @@ trait aErrorsTrait {
             return "";
         }
 
-        return Enumerator::create($functionErrors)->select(fn($errorMessage, $key) => "'{$key}': {$errorMessage}")->join("\n");
+        return Enumerable::create($functionErrors)->select(fn($errorMessage, $key) => "'{$key}': {$errorMessage}")->join("\n");
     }
 }

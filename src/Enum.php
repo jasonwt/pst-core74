@@ -5,6 +5,8 @@ declare(strict_types=1);
 
 namespace Pst\Core;
 
+use Pst\Core\Interfaces\IEnum;
+
 use Exception;
 use InvalidArgumentException;
 
@@ -18,7 +20,7 @@ use InvalidArgumentException;
  * @since 1.0.0
  * 
  */
-abstract class Enum extends CoreObject {
+abstract class Enum extends CoreObject implements IEnum {
     private $value;
 
     protected function __construct($value) {
@@ -38,7 +40,11 @@ abstract class Enum extends CoreObject {
     }
 
     public function __toString(): string {
-        return (string) $this->value;
+        return static::className() . "::" . (string) $this->value;
+    }
+
+    public function toString(): string {
+        return $this->__toString();
     }
 
     /**
@@ -79,9 +85,9 @@ abstract class Enum extends CoreObject {
      * 
      * @param string $name 
      * 
-     * @return null|Enum 
+     * @return null|IEnum 
      */
-    public static function tryFromName(string $name): ?Enum {
+    public static function tryFromName(string $name): ?IEnum {
         $name = static::caseAliases()[$name] ?? $name;
 
         $cases = static::cases();
@@ -98,11 +104,11 @@ abstract class Enum extends CoreObject {
      * 
      * @param string $name 
      * 
-     * @return Enum 
+     * @return IEnum 
      * 
      * @throws InvalidArgumentException 
      */
-    public static function fromName(string $name): Enum {
+    public static function fromName(string $name): IEnum {
         $name = static::caseAliases()[$name] ?? $name;
 
         $cases = static::cases();
@@ -120,11 +126,11 @@ abstract class Enum extends CoreObject {
      * 
      * @param $value
      * 
-     * @return static
+     * @return IEnum
      * 
      * @throws Exception
      */
-    public static function from($value) {
+    public static function from($value): IEnum {
         $cases = static::cases();
 
         if (!in_array($value, $cases, true)) {
@@ -141,7 +147,7 @@ abstract class Enum extends CoreObject {
      * 
      * @return static|null
      */
-    public static function tryFrom($value): ?Enum {
+    public static function tryFrom($value): ?IEnum {
         if (empty($value = trim($value))) {
             return null;
         }

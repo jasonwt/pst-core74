@@ -6,6 +6,7 @@ declare(strict_types=1);
 namespace Pst\Core\DependencyInjection;
 
 use Pst\Core\Enum;
+use Pst\Core\Interfaces\IEnum;
 
 /**
  * Represents a service lifetime enum.
@@ -16,7 +17,7 @@ use Pst\Core\Enum;
  * 
  * @since 1.0.0
  */
-class ServiceLifetime extends Enum {
+class ServiceLifetime extends Enum implements IEnum {
     public static function cases(): array {
         return ["Transient" => "Transient", "Singleton" => "Singleton"];
     }

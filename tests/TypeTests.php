@@ -8,12 +8,15 @@ namespace TypeTests;
 
 require_once(__DIR__ . "/../vendor/autoload.php");
 
-use InvalidArgumentException;
-use Exception;
-use Pst\Core\Types\ITypeHint;
 use Pst\Core\Types\Type;
+use Pst\Core\Types\ITypeHint;
+use Pst\Core\Types\SpecialType;
 use Pst\Core\Types\TypeHintFactory;
+use Pst\Core\Caching\Caching;
+
 use Pst\Testing\Should;
+
+use function Pst\Core\dd;
 
 trait Trait1 {};
 trait Trait2 {use Trait1; };
@@ -24,6 +27,9 @@ abstract class AbstractClass implements Interface2 {}
 class TestClass extends AbstractClass implements Interface2 {}
 
 function isAssignableToTest(ITypeHint $toType, ITypeHint $fromType) {
+
+    
+    
 
     $TYPES = [
         "mixed" => true,
@@ -97,7 +103,7 @@ Should::executeTests(function() {
         Type::int(), 
         Type::null(), 
         Type::string(), 
-        Type::void(), 
+        SpecialType::void(), 
 
         Type::interface(Interface1::class), 
         Type::interface(Interface2::class), 
@@ -116,9 +122,9 @@ Should::executeTests(function() {
         TypeHintFactory::string(), 
         TypeHintFactory::void(), 
         TypeHintFactory::object(),
-        TypeHintFactory::tryParse("int|null"), 
-        TypeHintFactory::tryParse("null|int"), 
-        TypeHintFactory::tryParse("?int")
+        TypeHintFactory::tryParseTypeName("int|null"), 
+        TypeHintFactory::tryParseTypeName("null|int"), 
+        TypeHintFactory::tryParseTypeName("?int")
     ];
 
     foreach ($types as $type) {
@@ -145,11 +151,11 @@ Should::executeTests(function() {
 //     Should::equal((string) ($intType = Type::int()), "int", $intType->fullName());
 //     Should::equal((string) ($nullType = Type::null()), "null", $nullType->fullName());
 //     Should::equal((string) ($stringType = Type::string()), "string", $stringType->fullName());
-//     Should::equal((string) ($voidType = Type::void()), "void", $voidType->fullName());
+//     Should::equal((string) ($voidType = SpecialType::void()), "void", $voidType->fullName());
 
-//     Should::equal((string) ($nullIntType = TypeHintFactory::tryParse("?int")), "int|null", $nullIntType->fullName());
-//     Should::equal((string) ($nullIntFloatType = TypeHintFactory::tryParse("?int|float")), "float|int|null", $nullIntFloatType->fullName());
-//     Should::equal((string) ($nullArrayIntFloat = TypeHintFactory::tryParse("?array", "int", "float")), "array|float|int|null", $nullArrayIntFloat->fullName());
+//     Should::equal((string) ($nullIntType = TypeHintFactory::tryParseTypeName("?int")), "int|null", $nullIntType->fullName());
+//     Should::equal((string) ($nullIntFloatType = TypeHintFactory::tryParseTypeName("?int|float")), "float|int|null", $nullIntFloatType->fullName());
+//     Should::equal((string) ($nullArrayIntFloat = TypeHintFactory::tryParseTypeName("?array", "int", "float")), "array|float|int|null", $nullArrayIntFloat->fullName());
 
 //     Should::equal((string) ($trait1Type = Type::typeOf(Trait1::class)), Trait1::class, $trait1Type->fullName());
 //     Should::beTrue($trait1Type->isAbstract(), $trait1Type->isTrait());
@@ -164,10 +170,10 @@ Should::executeTests(function() {
 //     Should::equal((string) ($testClassType = Type::typeOf(TestClass::class)), TestClass::class, $testClassType->fullName());
 //     Should::beTrue(!$testClassType->isAbstract(), $testClassType->isClass(), $testClassType->isObject());
 
-//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParse("?mixed"));
-//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParse("?undefined"));
-//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParse("?void"));
-//     Should::notThrow(Exception::class, fn() => TypeHintFactory::tryParse("?object"));
+//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParseTypeName("?mixed"));
+//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParseTypeName("?undefined"));
+//     Should::throw(InvalidArgumentException::class, fn() => TypeHintFactory::tryParseTypeName("?void"));
+//     Should::notThrow(Exception::class, fn() => TypeHintFactory::tryParseTypeName("?object"));
 
 //     $isAssignableTestParameters = [
 //         // "array" => [
@@ -401,13 +407,17 @@ Should::executeTests(function() {
 // //        echo "Testing $type\n";
 //         foreach ($tests["from"] as $otherType => $expected) {
 // //            echo "\tTesting $type from $otherType\n";
-//             Should::equal($expected, TypeHintFactory::tryParse($type)->isAssignableFrom(TypeHintFactory::tryParse($otherType)));
+//             Should::equal($expected, TypeHintFactory::tryParseTypeName($type)->isAssignableFrom(TypeHintFactory::tryParseTypeName($otherType)));
 //         }
 
 //         foreach ($tests["to"] as $otherType => $expected) {
 // //            echo "\tTesting $type to $otherType\n";
-//             Should::equal($expected, TypeHintFactory::tryParse($type)->isAssignableTo(TypeHintFactory::tryParse($otherType)));
+//             Should::equal($expected, TypeHintFactory::tryParseTypeName($type)->isAssignableTo(TypeHintFactory::tryParseTypeName($otherType)));
 //         }
 //     }
+
+
+    // dd(Caching::getCache("ITypeHint::create"));
+    // dd(Caching::getCache("ITypeHint::isAssignableFrom"));
 
 });

@@ -13,6 +13,8 @@ use Pst\Core\Exceptions\InvalidOperationException;
 
 use Pst\Testing\Should;
 
+use function Pst\Core\dd;
+
 Should::executeTests(function() {
     $mixedTestArray = [
         "ten" => 10,
@@ -30,6 +32,7 @@ Should::executeTests(function() {
 
     $mkMixedGenerator = fn() => (function() use ($mixedTestArray) {
         foreach ($mixedTestArray as $key => $value) {
+            //echo "Yielding: $key => $value\n";
             yield $key => $value;
         }
     })();
@@ -40,7 +43,7 @@ Should::executeTests(function() {
 
     $enumerable = $enumerable->select(
         fn($value, $key) => !is_string($value) ? $key : $value,
-        fn($value, $key) => is_string($value) ? $key : $value
+        fn($value, $key) => is_string($key) ? $value : $key
     )->toRewindableEnumerable();
 
     // creation

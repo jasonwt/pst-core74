@@ -159,7 +159,7 @@ trait PropertiesArrayTrait {
 
         $property = $this->PropertiesArrayTrait[$name];
 
-        if (!TypeHintFactory::tryParse($property->typeHint)->isAssignableFrom(Type::typeOf($value))) {
+        if (!TypeHintFactory::tryParseTypeName($property->typeHint)->isAssignableFrom(Type::typeOf($value))) {
             throw new InvalidArgumentException("Value is not assignable to type hint");
         }
 
